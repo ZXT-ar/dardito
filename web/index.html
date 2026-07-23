@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Dardito: explorá las historias, misterios y memorias de La Plata.">
+  <meta name="theme-color" content="#F4B900">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Dardito">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Dardito · Historias de La Plata</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    @media (hover: hover) and (pointer: fine) {
+      html,
+      body,
+      body * {
+        cursor: none !important;
+      }
+
+      #dardito-cursor {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 32px;
+        height: 32px;
+        pointer-events: none;
+        z-index: 2147483647;
+        opacity: 0;
+        background: #ffffff;
+        mix-blend-mode: difference;
+        -webkit-mask: url("icons/pen-nib-cursor.svg") center / contain no-repeat;
+        mask: url("icons/pen-nib-cursor.svg") center / contain no-repeat;
+        will-change: transform;
+      }
+    }
+  </style>
+  <script src="install.js"></script>
+  <script src="cursor.js" defer></script>
+  <!-- Carga síncrona requerida por google_maps_flutter_web. Esta clave web
+       debe restringirse por HTTP referrer y a Maps JavaScript API. -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyByFI6izL7wo9iSZmj4gyb_ZAlntRYBiaM"></script>
+</head>
+<body>
+  <div id="dardito-cursor" aria-hidden="true"></div>
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

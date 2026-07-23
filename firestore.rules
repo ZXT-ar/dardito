@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // El corpus, las conversaciones, los aportes y los eventos de canal son
+    // exclusivamente server-side. Cloud Functions accede mediante Admin SDK/IAM.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

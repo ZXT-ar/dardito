@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <mask id="nib-cutouts">
+      <rect width="32" height="32" fill="white"/>
+      <circle cx="11.1" cy="11.1" r="2.15" fill="black"/>
+      <path d="M2.4 2.4 9.6 9.6" stroke="black" stroke-width="1.65" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <path d="M1.7 1.7 9 3.8l13.5 13.5-5.2 5.2L3.8 9Z" fill="#11120F" mask="url(#nib-cutouts)"/>
+  <path d="m19.1 16.5 3.4-3.4 7.8 7.8-9.4 9.4-7.8-7.8 3.4-3.4 4.4 4.4 2.6-2.6Z" fill="#11120F"/>
+</svg>
