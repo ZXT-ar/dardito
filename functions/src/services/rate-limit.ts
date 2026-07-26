@@ -1,7 +1,7 @@
 import {createHash} from "node:crypto";
 import {FieldValue, getFirestore, Timestamp} from "firebase-admin/firestore";
 
-const windowMilliseconds = 60_000;
+const defaultWindowMilliseconds = 60_000;
 const defaultMaxRequestsPerWindow = 30;
 
 export function privacyHash(value: string): string {
@@ -11,6 +11,7 @@ export function privacyHash(value: string): string {
 export async function enforceRateLimit(
   identity: string,
   maxRequestsPerWindow = defaultMaxRequestsPerWindow,
+  windowMilliseconds = defaultWindowMilliseconds,
 ): Promise<void> {
   const reference = getFirestore().collection("rate_limits").doc(privacyHash(identity));
   const now = Date.now();

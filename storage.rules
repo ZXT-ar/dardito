@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Las fotos se cargan primero a un espacio privado del usuario. La
+    // Cloud Function verifica pertenencia, cantidad, tipo, peso e integridad
+    // antes de registrar el aporte como pendiente de revisión.
+    match /story_submissions/{userId}/{submissionId}/{fileName} {
+      allow read: if false;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && submissionId.matches('^[a-zA-Z0-9_-]{20,80}$')
+        && fileName.matches('^photo_[0-2]\\.(jpg|jpeg|png|webp)$')
+        && request.resource.size <= 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

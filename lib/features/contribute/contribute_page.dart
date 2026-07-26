@@ -1,9 +1,15 @@
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/auth/auth_service.dart';
+import '../../core/platform/upload_exit_guard.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/repositories/story_repository.dart';
+import '../legal/legal_page.dart';
+import 'story_submission_service.dart';
 
 class ContributePage extends StatefulWidget {
   const ContributePage({
@@ -11,10 +17,14 @@ class ContributePage extends StatefulWidget {
     required this.user,
     required this.onSignOut,
     required this.onExplore,
+    required this.onOpenLegal,
   });
+
   final AuthUser user;
   final VoidCallback onSignOut;
   final VoidCallback onExplore;
+  final ValueChanged<LegalDocument> onOpenLegal;
+
   @override
   State<ContributePage> createState() => _ContributePageState();
 }
@@ -23,148 +33,449 @@ class _ContributePageState extends State<ContributePage> {
   final _formKey = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _story = TextEditingController();
-  final _contact = TextEditingController();
+  final _exitGuard = UploadExitGuard();
+  final List<SelectedStoryPhoto?> _photos = List.filled(storyPhotoLimit, null);
   String? _category;
   String? _neighborhood;
-  bool _consent = false;
+  bool _materialConsent = false;
+  bool _legalConsent = false;
+  bool _contactConsent = false;
+  bool _isSubmitting = false;
+  bool _isPickingPhotos = false;
+  bool _filePickerNoticeAccepted = false;
   bool _sent = false;
+  double _progress = 0;
+
+  static final _sensitiveExpressions = <RegExp>[
+    RegExp(
+      r'\b(violaci[oó]n|violar|pedofilia|ped[oó]fil[oa]|abuso sexual|pornograf[ií]a infantil)\b',
+      caseSensitive: false,
+    ),
+    RegExp(
+      r'\b(descuartizar|degollar|mutilar|torturar|matar|asesinar|arma|pistola|rev[oó]lver)\b',
+      caseSensitive: false,
+    ),
+    RegExp(
+      r'\b(pito|pene|culo|teta|concha|vagina|genital|pelotud[oa]|bolud[oa]|forr[oa]|put[oa]|mierda|carajo|imb[eé]cil|idiota)\b',
+      caseSensitive: false,
+    ),
+  ];
 
   @override
   void dispose() {
+    _exitGuard.disable();
     _title.dispose();
     _story.dispose();
-    _contact.dispose();
     super.dispose();
   }
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    if (!_consent) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Necesitamos tu consentimiento para revisar el aporte.',
+  List<String> _sensitiveMatches() {
+    final text = '${_title.text}\n${_story.text}';
+    return _sensitiveExpressions
+        .expand((expression) => expression.allMatches(text))
+        .map((match) => match.group(0)!.toLowerCase())
+        .toSet()
+        .toList();
+  }
+
+  Future<void> _pickPhotos({int? replaceIndex}) async {
+    if (_isSubmitting || _isPickingPhotos) return;
+    final remaining = replaceIndex == null
+        ? _photos.where((photo) => photo == null).length
+        : 1;
+    if (remaining == 0) return;
+
+    if (!_filePickerNoticeAccepted) {
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Elegir fotos desde archivos'),
+          content: const Text(
+            'Dardito abrirá el explorador de archivos de tu dispositivo. '
+            'Sólo podrá leer las imágenes que elijas y no usará la cámara.',
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(true),
+              icon: const Icon(Icons.folder_open_rounded),
+              label: const Text('Abrir archivos'),
+            ),
+          ],
         ),
+      );
+      if (accepted != true || !mounted) return;
+      _filePickerNoticeAccepted = true;
+    }
+
+    setState(() => _isPickingPhotos = true);
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
+        allowMultiple: replaceIndex == null && remaining > 1,
+        withData: true,
+      );
+      if (result == null || !mounted) return;
+
+      final selected = <SelectedStoryPhoto>[];
+      for (final file in result.files.take(remaining)) {
+        final bytes = file.bytes;
+        final extension = (file.extension ?? file.name.split('.').last)
+            .toLowerCase();
+        final contentType = switch (extension) {
+          'png' => 'image/png',
+          'webp' => 'image/webp',
+          'jpg' || 'jpeg' => 'image/jpeg',
+          _ => null,
+        };
+        if (bytes == null || contentType == null) {
+          _notice('Sólo se admiten imágenes JPG, PNG o WebP.');
+          return;
+        }
+        if (bytes.lengthInBytes > storyPhotoBytesLimit) {
+          _notice('Cada foto puede pesar como máximo 8 MB.');
+          return;
+        }
+        selected.add(
+          SelectedStoryPhoto(
+            name: file.name,
+            bytes: bytes,
+            contentType: contentType,
+          ),
+        );
+      }
+      if (selected.isEmpty) return;
+
+      final currentBytes = _photos.whereType<SelectedStoryPhoto>().fold<int>(
+        0,
+        (sum, photo) => sum + photo.bytes.lengthInBytes,
+      );
+      final replacedBytes = replaceIndex == null
+          ? 0
+          : _photos[replaceIndex]?.bytes.lengthInBytes ?? 0;
+      final incomingBytes = selected.fold<int>(
+        0,
+        (sum, photo) => sum + photo.bytes.lengthInBytes,
+      );
+      if (currentBytes - replacedBytes + incomingBytes >
+          storyPhotosTotalBytesLimit) {
+        _notice('Las tres fotos pueden pesar como máximo 20 MB en total.');
+        return;
+      }
+
+      setState(() {
+        if (replaceIndex != null) {
+          _photos[replaceIndex] = selected.first;
+        } else {
+          for (final photo in selected) {
+            final empty = _photos.indexWhere((item) => item == null);
+            if (empty >= 0) _photos[empty] = photo;
+          }
+        }
+      });
+    } on PlatformException {
+      if (mounted) {
+        _notice(
+          'No pudimos abrir el explorador. Revisá los permisos e intentá nuevamente.',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        _notice('No pudimos leer las fotos seleccionadas. Intentá nuevamente.');
+      }
+    } finally {
+      if (mounted) setState(() => _isPickingPhotos = false);
+    }
+  }
+
+  Future<void> _editPhoto(int index) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.swap_horiz_rounded),
+              title: const Text('Cambiar esta foto'),
+              onTap: () => Navigator.pop(context, 'replace'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded),
+              title: const Text('Quitar esta foto'),
+              onTap: () => Navigator.pop(context, 'remove'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (action == 'replace') await _pickPhotos(replaceIndex: index);
+    if (action == 'remove') setState(() => _photos[index] = null);
+  }
+
+  void _notice(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _showContentWarning(List<String> matches) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Revisá el contenido'),
+        content: Text(
+          'Detectamos expresiones que podrían describir contenido violento, sexual '
+          'o contrario a las reglas (${matches.take(4).join(', ')}). '
+          'Editá el relato antes de enviarlo.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              widget.onOpenLegal(LegalDocument.terms);
+            },
+            child: const Text('Ver términos'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Volver a editar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (_isSubmitting) return;
+    if (!_formKey.currentState!.validate()) return;
+    if (!_materialConsent || !_legalConsent) {
+      _notice(
+        'Confirmá el permiso del material y aceptá los términos y la privacidad.',
       );
       return;
     }
-    setState(() => _sent = true);
+    final matches = _sensitiveMatches();
+    if (matches.isNotEmpty) {
+      await _showContentWarning(matches);
+      return;
+    }
+    var contactConsent = _contactConsent;
+    if (!contactConsent) {
+      final decision = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('¿Podemos contactarte?'),
+          content: Text(
+            'Si aceptás, podremos escribirte a ${widget.user.email} para pedir contexto. '
+            'También podés enviar la historia sin habilitar el contacto.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Enviar sin contacto'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Permitir contacto'),
+            ),
+          ],
+        ),
+      );
+      if (decision == null || !mounted) return;
+      contactConsent = decision;
+      if (decision) setState(() => _contactConsent = true);
+    }
+    setState(() {
+      _isSubmitting = true;
+      _progress = 0;
+    });
+    _exitGuard.enable();
+    try {
+      await StorySubmissionService().submit(
+        title: _title.text.trim(),
+        story: _story.text.trim(),
+        category: _category!,
+        neighborhood: _neighborhood!,
+        materialConsent: _materialConsent,
+        legalConsent: _legalConsent,
+        contactConsent: contactConsent,
+        photos: _photos.whereType<SelectedStoryPhoto>().toList(),
+        clientMetadata: {
+          'platform': defaultTargetPlatform.name,
+          'isWeb': kIsWeb,
+          'locale': PlatformDispatcher.instance.locale.toLanguageTag(),
+          'timeZone': DateTime.now().timeZoneName,
+          'timeZoneOffsetMinutes': DateTime.now().timeZoneOffset.inMinutes,
+          'viewportWidth': MediaQuery.sizeOf(context).width.round(),
+          'viewportHeight': MediaQuery.sizeOf(context).height.round(),
+        },
+        onProgress: (value) {
+          if (mounted) setState(() => _progress = value);
+        },
+      );
+      if (mounted) setState(() => _sent = true);
+    } on StorySubmissionException catch (error) {
+      if (!mounted) return;
+      if (error.code == 'CONTENT_REVIEW_REQUIRED') {
+        await _showContentWarning(error.details);
+      } else {
+        _notice(error.message);
+      }
+    } finally {
+      _exitGuard.disable();
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    child: Column(
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_isSubmitting,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop && _isSubmitting) {
+        _notice('Esperá, no salgas: tu historia todavía se está cargando.');
+      }
+    },
+    child: Stack(
       children: [
-        Container(
-          color: AppColors.yellow,
-          padding: EdgeInsets.only(
-            top: MediaQuery.sizeOf(context).width >= 760 ? 150 : 58,
-            bottom: 58,
-          ),
-          child: MaxWidth(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final wide = constraints.maxWidth >= 820;
-                final character = Semantics(
-                  image: true,
-                  label: 'Dardito escucha con atención tu historia',
-                  child: Image.asset(
-                    'assets/brand/dardito_listening.png',
-                    fit: BoxFit.contain,
-                    alignment: Alignment.bottomCenter,
-                    filterQuality: FilterQuality.high,
-                  ),
-                );
-                final copy = Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SectionEyebrow('Historias de la gente'),
-                    const SizedBox(height: 18),
-                    Text(
-                      'Vos también sos parte\ndel mapa.',
-                      style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                        fontSize: MediaQuery.sizeOf(context).width < 600
-                            ? 48
-                            : 64,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 680),
-                      child: Text(
-                        'Compartí un recuerdo, una fotografía o un relato de tu barrio. Dardito lo guarda para que nuestro equipo pueda revisarlo con cuidado.',
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    _SignedInChip(
-                      user: widget.user,
-                      onSignOut: widget.onSignOut,
-                    ),
-                  ],
-                );
-                return wide
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SizedBox(width: 280, height: 390, child: character),
-                          const SizedBox(width: 44),
-                          Expanded(child: copy),
-                        ],
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Center(
-                            child: SizedBox(height: 220, child: character),
-                          ),
-                          const SizedBox(height: 22),
-                          copy,
-                        ],
-                      );
-              },
-            ),
-          ),
-        ),
-        const SizedBox(height: 56),
-        MaxWidth(
-          child: _sent
-              ? _Success(onExplore: widget.onExplore)
-              : LayoutBuilder(
-                  builder: (context, c) {
-                    final wide = c.maxWidth > 820;
-                    final guide = const _ReviewGuide();
-                    final form = _ContributionForm(
-                      formKey: _formKey,
-                      title: _title,
-                      story: _story,
-                      contact: _contact,
-                      category: _category,
-                      neighborhood: _neighborhood,
-                      consent: _consent,
-                      onCategory: (v) => setState(() => _category = v),
-                      onNeighborhood: (v) => setState(() => _neighborhood = v),
-                      onConsent: (v) => setState(() => _consent = v ?? false),
-                      onSubmit: _submit,
-                    );
-                    return wide
-                        ? Row(
+        SingleChildScrollView(
+          child: Column(
+            children: [
+              _Hero(user: widget.user, onSignOut: widget.onSignOut),
+              const SizedBox(height: 56),
+              MaxWidth(
+                child: _sent
+                    ? _Success(onExplore: widget.onExplore)
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          final form = _ContributionForm(
+                            formKey: _formKey,
+                            title: _title,
+                            story: _story,
+                            category: _category,
+                            neighborhood: _neighborhood,
+                            materialConsent: _materialConsent,
+                            legalConsent: _legalConsent,
+                            contactConsent: _contactConsent,
+                            photos: _photos,
+                            onCategory: (value) =>
+                                setState(() => _category = value),
+                            onNeighborhood: (value) =>
+                                setState(() => _neighborhood = value),
+                            onMaterialConsent: (value) => setState(
+                              () => _materialConsent = value ?? false,
+                            ),
+                            onLegalConsent: (value) =>
+                                setState(() => _legalConsent = value ?? false),
+                            onContactConsent: (value) => setState(
+                              () => _contactConsent = value ?? false,
+                            ),
+                            onPickPhotos: () => _pickPhotos(),
+                            onEditPhoto: _editPhoto,
+                            onOpenLegal: widget.onOpenLegal,
+                            onSubmit: _submit,
+                          );
+                          if (constraints.maxWidth <= 820) {
+                            return Column(
+                              children: [
+                                const _ReviewGuide(),
+                                const SizedBox(height: 38),
+                                form,
+                              ],
+                            );
+                          }
+                          return Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(width: 330, child: guide),
+                              const SizedBox(width: 330, child: _ReviewGuide()),
                               const SizedBox(width: 54),
                               Expanded(child: form),
                             ],
-                          )
-                        : Column(
-                            children: [guide, const SizedBox(height: 38), form],
                           );
-                  },
-                ),
+                        },
+                      ),
+              ),
+              const SizedBox(height: 110),
+            ],
+          ),
         ),
-        const SizedBox(height: 80),
+        if (_isSubmitting)
+          Positioned.fill(child: _UploadOverlay(progress: _progress)),
       ],
+    ),
+  );
+}
+
+class _Hero extends StatelessWidget {
+  const _Hero({required this.user, required this.onSignOut});
+  final AuthUser user;
+  final VoidCallback onSignOut;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    color: AppColors.yellow,
+    padding: EdgeInsets.only(
+      top: MediaQuery.sizeOf(context).width >= 760 ? 150 : 58,
+      bottom: 58,
+    ),
+    child: MaxWidth(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 820;
+          final character = Semantics(
+            image: true,
+            label: 'Dardito escucha con atención tu historia',
+            child: Image.asset(
+              'assets/brand/dardito_listening.png',
+              fit: BoxFit.contain,
+              alignment: Alignment.bottomCenter,
+              filterQuality: FilterQuality.high,
+            ),
+          );
+          final copy = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionEyebrow('Historias de la gente'),
+              const SizedBox(height: 18),
+              Text(
+                'Vos también sos parte\ndel mapa.',
+                style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                  fontSize: MediaQuery.sizeOf(context).width < 600 ? 48 : 64,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Compartí un recuerdo, una fotografía o un relato de tu barrio. '
+                'Dardito lo guarda para que nuestro equipo pueda revisarlo con cuidado.',
+                style: TextStyle(fontSize: 18, height: 1.45),
+              ),
+              const SizedBox(height: 24),
+              _SignedInChip(user: user, onSignOut: onSignOut),
+            ],
+          );
+          return wide
+              ? Row(
+                  children: [
+                    SizedBox(width: 280, height: 390, child: character),
+                    const SizedBox(width: 44),
+                    Expanded(child: copy),
+                  ],
+                )
+              : Column(
+                  children: [
+                    SizedBox(height: 220, child: character),
+                    const SizedBox(height: 22),
+                    copy,
+                  ],
+                );
+        },
+      ),
     ),
   );
 }
@@ -173,10 +484,9 @@ class _SignedInChip extends StatelessWidget {
   const _SignedInChip({required this.user, required this.onSignOut});
   final AuthUser user;
   final VoidCallback onSignOut;
-
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(8, 8, 14, 8),
+    padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
     decoration: BoxDecoration(
       color: AppColors.ink,
       borderRadius: BorderRadius.circular(18),
@@ -185,47 +495,41 @@ class _SignedInChip extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 36,
-          height: 36,
+          width: 38,
+          height: 38,
           decoration: BoxDecoration(
             color: AppColors.yellow,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(
-            user.provider == AuthProvider.google
-                ? Icons.g_mobiledata_rounded
-                : Icons.apple_rounded,
-            color: AppColors.ink,
-          ),
+          child: const Icon(Icons.g_mobiledata_rounded),
         ),
         const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'IDENTIDAD CONECTADA',
-              style: TextStyle(
-                color: AppColors.yellow,
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-                letterSpacing: .7,
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'IDENTIDAD CONECTADA',
+                style: TextStyle(
+                  color: AppColors.yellow,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-            ),
-            Text(
-              user.email,
-              style: const TextStyle(
-                color: AppColors.paper,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
+              Text(
+                user.email,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.paper,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(width: 8),
         IconButton(
           tooltip: 'Cerrar sesión',
           onPressed: onSignOut,
-          visualDensity: VisualDensity.compact,
           icon: const Icon(
             Icons.logout_rounded,
             color: AppColors.paper,
@@ -249,21 +553,20 @@ class _ReviewGuide extends StatelessWidget {
       ),
       const SizedBox(height: 24),
       const _Step(
-        number: '01',
-        title: 'Recibimos tu historia',
-        text: 'Queda guardada de forma privada.',
+        '01',
+        'Recibimos tu historia',
+        'Queda guardada de forma privada.',
       ),
       const _Step(
-        number: '02',
-        title: 'La revisamos',
-        text: 'Validamos fuentes, permisos y datos sensibles.',
+        '02',
+        'La revisamos',
+        'Validamos fuentes, permisos y datos sensibles.',
       ),
       const _Step(
-        number: '03',
-        title: 'Te contactamos',
-        text: 'Podemos pedirte contexto antes de publicarla.',
+        '03',
+        'Te contactamos',
+        'Sólo si autorizaste el contacto por email.',
       ),
-      const SizedBox(height: 18),
       Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
@@ -271,18 +574,9 @@ class _ReviewGuide extends StatelessWidget {
           border: Border.all(color: AppColors.line),
           borderRadius: BorderRadius.circular(18),
         ),
-        child: const Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.info_outline, size: 20),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Enviar una historia no implica su publicación automática.',
-                style: TextStyle(color: AppColors.muted),
-              ),
-            ),
-          ],
+        child: const Text(
+          'Enviar una historia no implica su publicación automática.',
+          style: TextStyle(color: AppColors.muted),
         ),
       ),
     ],
@@ -290,7 +584,7 @@ class _ReviewGuide extends StatelessWidget {
 }
 
 class _Step extends StatelessWidget {
-  const _Step({required this.number, required this.title, required this.text});
+  const _Step(this.number, this.title, this.text);
   final String number;
   final String title;
   final String text;
@@ -313,7 +607,6 @@ class _Step extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
               Text(text, style: const TextStyle(color: AppColors.muted)),
             ],
           ),
@@ -328,31 +621,49 @@ class _ContributionForm extends StatelessWidget {
     required this.formKey,
     required this.title,
     required this.story,
-    required this.contact,
     required this.category,
     required this.neighborhood,
-    required this.consent,
+    required this.materialConsent,
+    required this.legalConsent,
+    required this.contactConsent,
+    required this.photos,
     required this.onCategory,
     required this.onNeighborhood,
-    required this.onConsent,
+    required this.onMaterialConsent,
+    required this.onLegalConsent,
+    required this.onContactConsent,
+    required this.onPickPhotos,
+    required this.onEditPhoto,
+    required this.onOpenLegal,
     required this.onSubmit,
   });
   final GlobalKey<FormState> formKey;
-  final TextEditingController title, story, contact;
+  final TextEditingController title;
+  final TextEditingController story;
   final String? category;
   final String? neighborhood;
-  final bool consent;
+  final bool materialConsent;
+  final bool legalConsent;
+  final bool contactConsent;
+  final List<SelectedStoryPhoto?> photos;
   final ValueChanged<String?> onCategory;
   final ValueChanged<String?> onNeighborhood;
-  final ValueChanged<bool?> onConsent;
+  final ValueChanged<bool?> onMaterialConsent;
+  final ValueChanged<bool?> onLegalConsent;
+  final ValueChanged<bool?> onContactConsent;
+  final VoidCallback onPickPhotos;
+  final ValueChanged<int> onEditPhoto;
+  final ValueChanged<LegalDocument> onOpenLegal;
   final VoidCallback onSubmit;
-  static final neighborhoods = LocalStoryRepository()
-      .getAll()
-      .map((story) => story.neighborhood)
-      .toSet()
-      .toList();
-  String? _required(String? v) =>
-      v == null || v.trim().isEmpty ? 'Este campo es necesario' : null;
+
+  static final neighborhoods =
+      LocalStoryRepository()
+          .getAll()
+          .map((item) => item.neighborhood)
+          .toSet()
+          .toList()
+        ..sort();
+
   @override
   Widget build(BuildContext context) => Card(
     child: Padding(
@@ -376,9 +687,16 @@ class _ContributionForm extends StatelessWidget {
             const SizedBox(height: 8),
             TextFormField(
               controller: title,
-              validator: _required,
+              maxLength: storyTitleLimit,
+              inputFormatters: [
+                LengthLimitingTextInputFormatter(storyTitleLimit),
+              ],
+              validator: (value) => (value?.trim().length ?? 0) < 3
+                  ? 'Escribí un título de al menos 3 caracteres'
+                  : null,
               decoration: const InputDecoration(
-                hintText: 'Ej: El almacén de mi abuelo en Tolosa',
+                hintText: 'Ej: El almacén de mi abuelo',
+                counterText: '',
               ),
             ),
             const SizedBox(height: 20),
@@ -386,11 +704,15 @@ class _ContributionForm extends StatelessWidget {
             const SizedBox(height: 8),
             TextFormField(
               controller: story,
-              validator: (v) => v == null || v.trim().length < 30
-                  ? 'Contanos un poco más (al menos 30 caracteres)'
-                  : null,
               minLines: 5,
               maxLines: 9,
+              maxLength: storyBodyLimit,
+              inputFormatters: [
+                LengthLimitingTextInputFormatter(storyBodyLimit),
+              ],
+              validator: (value) => (value?.trim().length ?? 0) < 30
+                  ? 'Contanos un poco más (al menos 30 caracteres)'
+                  : null,
               decoration: const InputDecoration(
                 hintText:
                     'Escribí el relato con todos los detalles que recuerdes…',
@@ -398,121 +720,117 @@ class _ContributionForm extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             LayoutBuilder(
-              builder: (context, c) {
-                final narrow = c.maxWidth < 560;
-                final fields = [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const _FieldLabel('Lugar o barrio'),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          initialValue: neighborhood,
-                          isExpanded: true,
-                          borderRadius: BorderRadius.circular(18),
-                          dropdownColor: AppColors.paper,
-                          validator: (value) =>
-                              value == null ? 'Elegí un barrio o zona' : null,
-                          decoration: _dropdownDecoration('Seleccionar barrio'),
-                          items: neighborhoods
-                              .map(
-                                (item) => DropdownMenuItem(
-                                  value: item,
-                                  child: Text(item),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: onNeighborhood,
-                        ),
-                      ],
-                    ),
+              builder: (context, constraints) {
+                final children = [
+                  _DropdownField(
+                    label: 'Lugar o barrio',
+                    value: neighborhood,
+                    hint: 'Seleccionar barrio',
+                    items: neighborhoods
+                        .map((value) => MapEntry(value, value))
+                        .toList(),
+                    onChanged: onNeighborhood,
                   ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const _FieldLabel('Categoría'),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          initialValue: category,
-                          isExpanded: true,
-                          borderRadius: BorderRadius.circular(18),
-                          dropdownColor: AppColors.paper,
-                          validator: (v) =>
-                              v == null ? 'Elegí una categoría' : null,
-                          decoration: _dropdownDecoration(
-                            'Seleccionar categoría',
-                          ),
-                          items: LocalStoryRepository.categories
-                              .map(
-                                (c) => DropdownMenuItem(
-                                  value: c.id,
-                                  child: Text(c.label),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: onCategory,
-                        ),
-                      ],
-                    ),
+                  _DropdownField(
+                    label: 'Categoría',
+                    value: category,
+                    hint: 'Seleccionar categoría',
+                    items: LocalStoryRepository.categories
+                        .map((value) => MapEntry(value.id, value.label))
+                        .toList(),
+                    onChanged: onCategory,
                   ),
                 ];
-                return narrow
+                return constraints.maxWidth < 560
                     ? Column(
                         children: [
-                          SizedBox(
-                            width: double.infinity,
-                            child: fields[0].child,
-                          ),
+                          children.first,
                           const SizedBox(height: 20),
-                          SizedBox(
-                            width: double.infinity,
-                            child: fields[1].child,
-                          ),
+                          children.last,
                         ],
                       )
                     : Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          fields[0],
+                          Expanded(child: children.first),
                           const SizedBox(width: 16),
-                          fields[1],
+                          Expanded(child: children.last),
                         ],
                       );
               },
             ),
-            const SizedBox(height: 20),
-            const _FieldLabel('Tu email o teléfono'),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: contact,
-              validator: _required,
-              decoration: const InputDecoration(
-                hintText: 'Para contactarte durante la revisión',
-                prefixIcon: Icon(Icons.alternate_email),
-              ),
+            const SizedBox(height: 24),
+            const _FieldLabel('Sumar fotos (opcional)'),
+            const SizedBox(height: 6),
+            const Text(
+              'Hasta 3 fotos JPG, PNG o WebP · 8 MB por foto · 20 MB en total.',
+              style: TextStyle(color: AppColors.muted, fontSize: 12),
             ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'La carga de imágenes estará conectada al almacenamiento en la siguiente etapa.',
+            const SizedBox(height: 4),
+            const Text(
+              'Se abrirá el explorador de archivos. La cámara no se utilizará.',
+              style: TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: List.generate(
+                storyPhotoLimit,
+                (index) => Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: index < storyPhotoLimit - 1 ? 10 : 0,
+                    ),
+                    child: _PhotoSlot(
+                      photo: photos[index],
+                      onTap: photos[index] == null
+                          ? onPickPhotos
+                          : () => onEditPhoto(index),
+                    ),
                   ),
                 ),
               ),
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: const Text('Sumar fotos o documentos'),
             ),
             const SizedBox(height: 18),
             CheckboxListTile(
-              value: consent,
-              onChanged: onConsent,
+              value: materialConsent,
+              onChanged: onMaterialConsent,
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
               title: const Text(
-                'Confirmo que puedo compartir este material y acepto que sea revisado según la política de privacidad.',
+                'Confirmo que puedo compartir este material y autorizo su revisión.',
+                style: TextStyle(fontSize: 13),
+              ),
+            ),
+            CheckboxListTile(
+              value: legalConsent,
+              onChanged: onLegalConsent,
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  const Text(
+                    'Acepto los términos y condiciones y la política de privacidad. ',
+                  ),
+                  _LegalLink(
+                    'Ver términos',
+                    () => onOpenLegal(LegalDocument.terms),
+                  ),
+                  const Text(' · '),
+                  _LegalLink(
+                    'Ver privacidad',
+                    () => onOpenLegal(LegalDocument.privacy),
+                  ),
+                ],
+              ),
+            ),
+            CheckboxListTile(
+              value: contactConsent,
+              onChanged: onContactConsent,
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: const Text(
+                'Acepto que me contacten al email con el que me autentifiqué.',
                 style: TextStyle(fontSize: 13),
               ),
             ),
@@ -535,6 +853,124 @@ class _ContributionForm extends StatelessWidget {
   );
 }
 
+class _DropdownField extends StatelessWidget {
+  const _DropdownField({
+    required this.label,
+    required this.value,
+    required this.hint,
+    required this.items,
+    required this.onChanged,
+  });
+  final String label;
+  final String? value;
+  final String hint;
+  final List<MapEntry<String, String>> items;
+  final ValueChanged<String?> onChanged;
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _FieldLabel(label),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<String>(
+        initialValue: value,
+        isExpanded: true,
+        borderRadius: BorderRadius.circular(18),
+        dropdownColor: AppColors.paper,
+        validator: (value) => value == null ? 'Elegí una opción' : null,
+        decoration: _dropdownDecoration(hint),
+        items: items
+            .map(
+              (item) =>
+                  DropdownMenuItem(value: item.key, child: Text(item.value)),
+            )
+            .toList(),
+        onChanged: onChanged,
+      ),
+    ],
+  );
+}
+
+class _PhotoSlot extends StatelessWidget {
+  const _PhotoSlot({required this.photo, required this.onTap});
+  final SelectedStoryPhoto? photo;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => AspectRatio(
+    aspectRatio: 1,
+    child: Semantics(
+      button: true,
+      label: photo == null
+          ? 'Elegir foto desde el explorador de archivos'
+          : 'Cambiar o quitar ${photo!.name}',
+      child: Tooltip(
+        message: photo == null
+            ? 'Elegir desde archivos'
+            : 'Cambiar o quitar foto',
+        child: Material(
+          color: AppColors.paper,
+          borderRadius: BorderRadius.circular(18),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.line),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: photo == null
+                  ? const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.folder_open_rounded, size: 30),
+                        SizedBox(height: 6),
+                        Text(
+                          'Elegir',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ],
+                    )
+                  : Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.memory(photo!.bytes, fit: BoxFit.cover),
+                        const Positioned(
+                          right: 8,
+                          top: 8,
+                          child: CircleAvatar(
+                            radius: 15,
+                            backgroundColor: AppColors.paper,
+                            child: Icon(Icons.more_horiz_rounded, size: 18),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _LegalLink extends StatelessWidget {
+  const _LegalLink(this.label, this.onTap);
+  final String label;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    child: Text(
+      label,
+      style: const TextStyle(
+        color: AppColors.rust,
+        fontWeight: FontWeight.w900,
+        decoration: TextDecoration.underline,
+      ),
+    ),
+  );
+}
+
 class _FieldLabel extends StatelessWidget {
   const _FieldLabel(this.text);
   final String text;
@@ -546,27 +982,71 @@ class _FieldLabel extends StatelessWidget {
 InputDecoration _dropdownDecoration(String hintText) => InputDecoration(
   hintText: hintText,
   contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-  border: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(18),
-    borderSide: const BorderSide(color: AppColors.line),
-  ),
+  border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
   enabledBorder: OutlineInputBorder(
     borderRadius: BorderRadius.circular(18),
     borderSide: const BorderSide(color: AppColors.line),
   ),
-  focusedBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(18),
-    borderSide: const BorderSide(color: AppColors.ink, width: 1.5),
-  ),
-  errorBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(18),
-    borderSide: const BorderSide(color: AppColors.rust),
-  ),
-  focusedErrorBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(18),
-    borderSide: const BorderSide(color: AppColors.rust, width: 1.5),
-  ),
 );
+
+class _UploadOverlay extends StatelessWidget {
+  const _UploadOverlay({required this.progress});
+  final double progress;
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: AppColors.ink.withValues(alpha: .82),
+    child: Center(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(end: progress.clamp(0, 1)),
+        duration: const Duration(milliseconds: 350),
+        builder: (context, value, _) => Container(
+          width: 420,
+          margin: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(30),
+          decoration: BoxDecoration(
+            color: AppColors.paper,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 28)],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/brand/dardito_app_icon.png',
+                width: 82,
+                height: 82,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                value < .84
+                    ? 'Dardito está guardando tu historia…'
+                    : 'Cerrando el archivo…',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Esperá, no salgas ni cierres esta ventana.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.muted),
+              ),
+              const SizedBox(height: 22),
+              LinearProgressIndicator(
+                value: value == 0 ? null : value,
+                minHeight: 10,
+                borderRadius: BorderRadius.circular(10),
+                color: AppColors.yellow,
+                backgroundColor: AppColors.line,
+              ),
+              const SizedBox(height: 10),
+              Text('${(value * 100).round()}%'),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
 
 class _Success extends StatelessWidget {
   const _Success({required this.onExplore});
@@ -576,14 +1056,10 @@ class _Success extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 50),
     child: Column(
       children: [
-        Container(
-          width: 86,
-          height: 86,
-          decoration: const BoxDecoration(
-            color: AppColors.yellow,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.favorite_rounded, size: 38),
+        const CircleAvatar(
+          radius: 43,
+          backgroundColor: AppColors.yellow,
+          child: Icon(Icons.favorite_rounded, size: 38),
         ),
         const SizedBox(height: 28),
         Text(
@@ -592,13 +1068,10 @@ class _Success extends StatelessWidget {
           style: Theme.of(context).textTheme.displayMedium,
         ),
         const SizedBox(height: 16),
-        const SizedBox(
-          width: 520,
-          child: Text(
-            'La recibimos correctamente. Antes de sumarla al mapa, nuestro equipo revisará el contenido y podrá contactarte para conocer más.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.muted, fontSize: 16, height: 1.5),
-          ),
+        const Text(
+          'La recibimos correctamente. Antes de sumarla al mapa, nuestro equipo la revisará.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.muted, fontSize: 16),
         ),
         const SizedBox(height: 30),
         FilledButton.icon(

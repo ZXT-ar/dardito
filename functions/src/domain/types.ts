@@ -25,6 +25,8 @@ export interface ChatRequest {
   message: string;
   conversationId?: string;
   participantId?: string;
+  sessionId?: string;
+  moderationScopeIds?: string[];
   channel: Channel;
   corpus?: CorpusItem[];
 }
@@ -41,4 +43,23 @@ export interface ChatResponse {
   answer: string;
   conversationId: string;
   sources: ChatSource[];
+  moderation: ModerationResult;
+}
+
+export type ModerationAction = "none" | "yellow" | "red" | "blocked";
+export type ModerationCategory =
+  | "harassment"
+  | "sexual_anatomy"
+  | "obscene_request"
+  | "weapons_instructions"
+  | "graphic_violence"
+  | "credible_threat"
+  | "sexual_minors";
+
+export interface ModerationResult {
+  action: ModerationAction;
+  yellowCount: number;
+  yellowLimit: 3;
+  categories: ModerationCategory[];
+  blockedUntil?: string;
 }

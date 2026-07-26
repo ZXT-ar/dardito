@@ -22,6 +22,7 @@ La región configurada es `southamerica-east1` (São Paulo), adecuada para usuar
 | `processWhatsAppInbound` | Firestore v2 | Procesa mensajes en segundo plano, usa el mismo chat y responde por Cloud API. |
 | `upsertKnowledge` | Callable v2 | Alta/actualización de corpus sólo para usuarios con custom claim `admin: true`. |
 | `submitStory` | HTTP v2 | Recibe aportes privados en estado `pending_review`. |
+| `upsertUserProfile` | HTTP v2 | Valida el token Google y crea/actualiza el perfil privado del usuario. |
 | `health` | HTTP v2 | Diagnóstico mínimo del servicio. |
 
 ## Colecciones Firestore
@@ -30,7 +31,10 @@ La región configurada es `southamerica-east1` (São Paulo), adecuada para usuar
 - `conversations/{id}/messages`: memoria breve y fuentes usadas.
 - `whatsapp_inbound`: cola idempotente del canal; el teléfono se elimina después del envío exitoso.
 - `story_submissions`: aportes pendientes de moderación.
+- `users/{uid}`: perfil autenticado y metadatos mínimos de seguridad.
+- `users/{uid}/story_submissions`: índice privado server-side de sus aportes.
 - `rate_limits`: ventanas de control de abuso con identificadores hasheados.
+- `moderation_sessions`: tarjetas, bloqueos y eventos mínimos de seguridad por sesión.
 
 Las reglas de Firestore niegan todo acceso cliente. Cloud Functions utiliza Admin SDK/IAM y es la única capa autorizada. Antes de construir un panel editorial, debe definirse Firebase Auth, custom claims y reglas específicas.
 
@@ -94,7 +98,7 @@ Firebase CLI 15 requiere JDK 21 o superior para el emulador de Firestore.
 ```bash
 npm --prefix functions install
 npm --prefix functions run build
-firebase emulators:start --only functions,firestore,hosting
+firebase emulators:start --only auth,functions,firestore,storage,hosting
 ```
 
 Al ejecutar sólo Flutter sin Hosting Emulator, puede apuntarse directamente a la función:
@@ -111,7 +115,7 @@ Con Hosting Emulator o Firebase Hosting no hace falta `dart-define`: el cliente 
 ```bash
 npm --prefix functions run build
 flutter build web --release
-firebase deploy --only firestore:rules,firestore:indexes,functions:darditoChat,functions:health,functions:submitStory
+firebase deploy --only auth,firestore:rules,firestore:indexes,storage,functions:darditoChat,functions:health,functions:submitStory,functions:upsertUserProfile
 firebase deploy --only hosting
 ```
 
@@ -142,7 +146,8 @@ Solicitud:
 ```json
 {
   "message": "Contame un misterio del centro",
-  "conversationId": "web-id-estable"
+  "conversationId": "web-id-estable",
+  "sessionId": "session-id-persistente"
 }
 ```
 
@@ -152,6 +157,12 @@ Respuesta:
 {
   "answer": "...",
   "conversationId": "web-id-estable",
+  "moderation": {
+    "action": "none",
+    "yellowCount": 0,
+    "yellowLimit": 3,
+    "categories": []
+  },
   "sources": [
     {
       "id": "tuneles",
@@ -183,6 +194,23 @@ Implementado:
 - CORS con allowlist;
 - límites de longitud y fallback local en Flutter;
 - Firestore cerrado a clientes.
+- Google OAuth con email verificado; el backend vuelve a verificar el ID token.
+- fotos privadas por UID, máximo 3, 8 MB cada una y 20 MB total;
+- validación del MIME declarado y de la firma binaria JPG/PNG/WebP;
+- título de 25 caracteres y relato de 2500, validados en cliente y servidor;
+- consentimiento separado para material, documentos legales y contacto;
+- idempotencia por `submissionId` y límites de 5 aportes/hora por usuario,
+  10/hora por IP;
+- la IP nunca se persiste en claro: se almacena un hash SHA-256 no reversible
+  junto con user-agent y datos básicos del equipo para auditoría antifraude.
+- tarjetas amarillas/rojas server-side, transaccionales y previas al LLM;
+- tres amarillas bloquean la sesión por 72 horas; amenazas críticas reciben roja directa;
+- la roja bloquea el identificador persistente y la IP, por lo que incógnito en la
+  misma red no evita la sanción;
+- texto infractor minimizado mediante hash en el registro de moderación.
+
+La política completa, categorías, flujo, retención y limitaciones se documentan en
+[`moderation_security.md`](moderation_security.md).
 
 Antes de producción pública:
 

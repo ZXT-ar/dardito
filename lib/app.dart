@@ -12,7 +12,9 @@ import 'features/home/home_page.dart';
 import 'features/legal/legal_page.dart';
 
 class DarditoApp extends StatefulWidget {
-  const DarditoApp({super.key});
+  const DarditoApp({super.key, this.authService});
+
+  final AuthService? authService;
 
   @override
   State<DarditoApp> createState() => _DarditoAppState();
@@ -20,7 +22,8 @@ class DarditoApp extends StatefulWidget {
 
 class _DarditoAppState extends State<DarditoApp> {
   final _repository = LocalStoryRepository();
-  final _auth = DemoAuthService();
+  late final AuthService _auth;
+  late final bool _ownsAuth;
   final _navigatorKey = GlobalKey<NavigatorState>();
   int _section = 0;
   CityStory? _focusedStory;
@@ -29,6 +32,8 @@ class _DarditoAppState extends State<DarditoApp> {
   @override
   void initState() {
     super.initState();
+    _ownsAuth = widget.authService == null;
+    _auth = widget.authService ?? FirebaseAuthService();
     _section = switch (Uri.base.queryParameters['section']) {
       'explore' => 1,
       'assistant' => 2,
@@ -48,8 +53,22 @@ class _DarditoAppState extends State<DarditoApp> {
         builder: (context) => const _OAuthDialog(),
       );
       if (provider == null || !mounted) return;
-      await _auth.signIn(provider);
-      if (!mounted) return;
+      try {
+        await _auth.signIn(provider);
+        if (!mounted) return;
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(_navigatorKey.currentContext!).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is StateError
+                  ? error.message.toString()
+                  : 'No pudimos conectar tu cuenta de Google.',
+            ),
+          ),
+        );
+        return;
+      }
     }
     setState(() => _section = index);
   }
@@ -96,6 +115,7 @@ class _DarditoAppState extends State<DarditoApp> {
                 if (mounted) setState(() => _section = 0);
               },
               onExplore: () => _goTo(1),
+              onOpenLegal: _openLegal,
             ),
             _ => LegalPage(
               initialDocument: _legalDocument,
@@ -105,6 +125,14 @@ class _DarditoAppState extends State<DarditoApp> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    if (_ownsAuth && _auth is FirebaseAuthService) {
+      _auth.dispose();
+    }
+    super.dispose();
   }
 }
 
@@ -448,18 +476,9 @@ class _OAuthDialogState extends State<_OAuthDialog> {
               enabled: _loading == null,
               onTap: () => _choose(AuthProvider.google),
             ),
-            const SizedBox(height: 10),
-            _OAuthButton(
-              label: 'Continuar con iCloud',
-              icon: Icons.apple_rounded,
-              loading: _loading == AuthProvider.apple,
-              enabled: _loading == null,
-              onTap: () => _choose(AuthProvider.apple),
-              dark: true,
-            ),
             const SizedBox(height: 18),
             const Text(
-              'VISTA PREVIA · OAuth se conectará en la etapa de integración',
+              'Se abrirá Google para que elijas o ingreses tu cuenta.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 10,
@@ -491,23 +510,21 @@ class _OAuthButton extends StatelessWidget {
     required this.loading,
     required this.enabled,
     required this.onTap,
-    this.dark = false,
   });
   final String label;
   final IconData icon;
   final bool loading;
   final bool enabled;
   final VoidCallback onTap;
-  final bool dark;
   @override
   Widget build(BuildContext context) => SizedBox(
     width: double.infinity,
     child: FilledButton.icon(
       onPressed: enabled ? onTap : null,
       style: FilledButton.styleFrom(
-        backgroundColor: dark ? AppColors.ink : Colors.white,
-        foregroundColor: dark ? AppColors.paper : AppColors.ink,
-        side: BorderSide(color: dark ? AppColors.ink : AppColors.line),
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.ink,
+        side: const BorderSide(color: AppColors.line),
         padding: const EdgeInsets.symmetric(vertical: 17),
       ),
       icon: loading

@@ -11,6 +11,7 @@
     "build": "tsc",
     "build:watch": "tsc --watch",
     "lint": "tsc --noEmit",
+    "test": "npm run build && node --test lib/domain/*.test.js",
     "serve": "npm run build && firebase emulators:start --only functions,firestore",
     "seed": "npm run build && node lib/scripts/seed-corpus.js"
   },

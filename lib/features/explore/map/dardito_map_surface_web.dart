@@ -162,145 +162,29 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
   }
 
   gmaps.Icon _markerIcon(StoryCategory category, {required bool selected}) {
-    final size = selected ? 62.0 : 48.0;
+    final height = selected ? 72.0 : 56.0;
+    final width = selected ? 82.0 : 64.0;
     return gmaps.Icon(
-      url:
-          'data:image/svg+xml;charset=UTF-8,${Uri.encodeComponent(_markerSvg(category, selected: selected))}',
-      scaledSize: gmaps.Size(size, size),
-      anchor: gmaps.Point(size / 2, size - 3),
+      url: _markerAsset(category.id),
+      scaledSize: gmaps.Size(width, height),
+      anchor: gmaps.Point(width / 2, height * .94),
     );
   }
 
-  String _markerSvg(StoryCategory category, {required bool selected}) {
-    final palette = _categoryPalette(category.id);
-    final icon = _categoryGlyph(category.id);
-    final halo = selected
-        ? '''
-          <circle cx="32" cy="30" r="27" fill="${palette.accent}" opacity=".20"/>
-          <circle cx="32" cy="30" r="24.5" fill="none" stroke="#FFF8EA" stroke-width="3"/>
-        '''
-        : '';
-    final lift = selected ? 0 : 4;
-
-    return '''
-      <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-        <defs>
-          <filter id="shadow" x="-35%" y="-30%" width="170%" height="190%">
-            <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#00131E" flood-opacity=".52"/>
-          </filter>
-          <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="${palette.light}"/>
-            <stop offset="1" stop-color="${palette.base}"/>
-          </linearGradient>
-        </defs>
-        <g transform="translate(0 $lift)">
-          $halo
-          <g filter="url(#shadow)">
-            <path d="M32 4C18.2 4 8 14.2 8 27.2c0 17.1 20.6 31.2 22.9 32.7.7.5 1.5.5 2.2 0C35.4 58.4 56 44.3 56 27.2 56 14.2 45.8 4 32 4Z" fill="url(#surface)" stroke="#FFF8EA" stroke-width="2.6"/>
-            <path d="M43.5 8.5c-2.7-2-6.2-3.2-9.9-3.4 4.1 1.6 7.3 4.1 9.9 7.4Z" fill="${palette.accent}"/>
-            <circle cx="32" cy="27" r="15.2" fill="#FFF8EA"/>
-            <circle cx="32" cy="27" r="12.8" fill="${palette.ink}" opacity=".07"/>
-            <g transform="translate(20 15)" fill="none" stroke="${palette.ink}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              $icon
-            </g>
-          </g>
-        </g>
-      </svg>
-    ''';
-  }
-
-  _MarkerPalette _categoryPalette(String categoryId) => switch (categoryId) {
-    'architecture' => const _MarkerPalette(
-      base: '#B55A3C',
-      light: '#D47B58',
-      accent: '#FFC000',
-      ink: '#562718',
-    ),
-    'mystery' => const _MarkerPalette(
-      base: '#645686',
-      light: '#8A79AC',
-      accent: '#FFC000',
-      ink: '#33274E',
-    ),
-    'culture' => const _MarkerPalette(
-      base: '#A46E20',
-      light: '#CF9741',
-      accent: '#FFE08A',
-      ink: '#52340D',
-    ),
-    'neighborhood' => const _MarkerPalette(
-      base: '#607154',
-      light: '#829174',
-      accent: '#FFC000',
-      ink: '#2F3B29',
-    ),
-    'memory' => const _MarkerPalette(
-      base: '#3F707D',
-      light: '#6594A0',
-      accent: '#FFC000',
-      ink: '#173C46',
-    ),
-    _ => const _MarkerPalette(
-      base: '#C18A2B',
-      light: '#DCA94F',
-      accent: '#FFC000',
-      ink: '#402D0D',
-    ),
-  };
-
-  String _categoryGlyph(String categoryId) => switch (categoryId) {
-    // A classical facade: the clearest small-scale symbol for architecture.
+  String _markerAsset(String categoryId) => switch (categoryId) {
     'architecture' =>
-      '''
-      <path d="M3 9 12 4l9 5"/><path d="M5 10h14M6 19h12M4 21h16"/>
-      <path d="M7 10v9M11 10v9M15 10v9M19 10v9"/>
-    ''',
-    // A keyhole surrounded by clues/sparks for urban mysteries.
-    'mystery' =>
-      '''
-      <circle cx="12" cy="10" r="4.2"/><path d="M10.2 13.8 9 20h6l-1.2-6.2"/>
-      <path d="M4 4v3M2.5 5.5h3M20 3v3M18.5 4.5h3"/>
-    ''',
-    // Two expressive masks preserve legibility at compact marker sizes.
-    'culture' =>
-      '''
-      <path d="M3 6c2-1.5 5-1.5 7 0v7c-1.7 2.7-5.3 2.7-7 0V6Z"/>
-      <path d="M14 5c2-1.5 5-1.5 7 0v8c-1.7 2.7-5.3 2.7-7 0V5Z"/>
-      <path d="M5.3 9h.1M7.7 9h.1M16.3 8h.1M18.7 8h.1M5 12c1 .9 2 .9 3 0M16 12c1-.9 2-.9 3 0"/>
-    ''',
-    // A pair of homes suggests community instead of a generic location pin.
+      'assets/assets/images/map_markers_v2/optimized/architecture.png',
+    'mystery' => 'assets/assets/images/map_markers_v2/optimized/mysteries.png',
+    'culture' => 'assets/assets/images/map_markers_v2/optimized/culture.png',
     'neighborhood' =>
-      '''
-      <path d="m2 12 6-5 6 5v8H4v-8M11 10l5-4 6 5v9h-8"/>
-      <path d="M7 20v-5h4v5M17 20v-5h3v5"/>
-    ''',
-    // A photograph with a heart makes community memory feel human.
+      'assets/assets/images/map_markers_v2/optimized/neighborhoods.png',
     'memory' =>
-      '''
-      <rect x="2.5" y="4" width="19" height="16" rx="2.5"/>
-      <circle cx="8" cy="9" r="2"/>
-      <path d="m5 17 4.5-4 3 2.5 2.5-2 4 3.5"/>
-      <path d="M15.5 8.8c1-1.3 3.2-.5 3.2 1.1 0 1.5-1.6 2.5-3.2 3.7-1.6-1.2-3.2-2.2-3.2-3.7 0-1.6 2.2-2.4 3.2-1.1Z" fill="${_categoryPalette(categoryId).ink}" stroke="none"/>
-    ''',
-    _ => '<circle cx="12" cy="12" r="7"/>',
+      'assets/assets/images/map_markers_v2/optimized/living_memory.png',
+    _ => 'assets/assets/images/map_markers_v2/optimized/architecture.png',
   };
 
   @override
   Widget build(BuildContext context) => HtmlElementView(viewType: _viewType);
-}
-
-class _MarkerPalette {
-  const _MarkerPalette({
-    required this.base,
-    required this.light,
-    required this.accent,
-    required this.ink,
-  });
-
-  final String base;
-  final String light;
-  final String accent;
-  final String ink;
 }
 
 class _WebDarditoMapController implements DarditoMapController {

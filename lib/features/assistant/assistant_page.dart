@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/security/client_session_id.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/story.dart';
 import 'dardito_assistant_service.dart';
@@ -25,10 +26,16 @@ class AssistantPage extends StatefulWidget {
 }
 
 class _Message {
-  const _Message(this.text, {this.fromDardito = false, this.story});
+  const _Message(
+    this.text, {
+    this.fromDardito = false,
+    this.story,
+    this.moderationAction = 'none',
+  });
   final String text;
   final bool fromDardito;
   final CityStory? story;
+  final String moderationAction;
 }
 
 class _AssistantPageState extends State<AssistantPage> {
@@ -37,6 +44,7 @@ class _AssistantPageState extends State<AssistantPage> {
   final DarditoAssistantService _assistant = FirebaseDarditoAssistantService();
   late final String _conversationId =
       'web-${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(0x7fffffff)}';
+  final String _sessionId = ClientSessionId.value;
   bool _typing = false;
   final List<_Message> _messages = const [
     _Message(
@@ -65,6 +73,7 @@ class _AssistantPageState extends State<AssistantPage> {
       final reply = await _assistant.send(
         message: text,
         conversationId: _conversationId,
+        sessionId: _sessionId,
       );
       if (!mounted) return;
       CityStory? story;
@@ -76,7 +85,14 @@ class _AssistantPageState extends State<AssistantPage> {
       }
       setState(() {
         _typing = false;
-        _messages.add(_Message(reply.answer, fromDardito: true, story: story));
+        _messages.add(
+          _Message(
+            reply.answer,
+            fromDardito: true,
+            story: story,
+            moderationAction: reply.moderationAction,
+          ),
+        );
       });
       _toBottom();
     } catch (error) {
@@ -527,11 +543,28 @@ class _MessageBubble extends StatelessWidget {
   final VoidCallback onMap;
   @override
   Widget build(BuildContext context) {
+    final isYellow = message.moderationAction == 'yellow';
+    final isRed =
+        message.moderationAction == 'red' ||
+        message.moderationAction == 'blocked';
+    final darditoColor = isRed
+        ? const Color(0xFFFFD8D4)
+        : isYellow
+        ? const Color(0xFFFFF1BF)
+        : AppColors.cream;
+    final borderColor = isRed
+        ? const Color(0xFFC62828)
+        : isYellow
+        ? const Color(0xFFE0A800)
+        : Colors.transparent;
     final bubble = Container(
       constraints: const BoxConstraints(maxWidth: 620),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: message.fromDardito ? AppColors.cream : AppColors.ink,
+        color: message.fromDardito ? darditoColor : AppColors.ink,
+        border: message.fromDardito && (isYellow || isRed)
+            ? Border.all(color: borderColor, width: 1.5)
+            : null,
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(18),
           topRight: const Radius.circular(18),
@@ -542,6 +575,29 @@ class _MessageBubble extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isYellow || isRed) ...[
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isRed ? Icons.block_rounded : Icons.warning_amber_rounded,
+                  size: 17,
+                  color: borderColor,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  isRed ? 'TARJETA ROJA' : 'TARJETA AMARILLA',
+                  style: TextStyle(
+                    color: borderColor,
+                    fontSize: 11,
+                    letterSpacing: .8,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
           Text(
             message.text,
             style: TextStyle(
@@ -661,12 +717,17 @@ class _Composer extends StatelessWidget {
     child: Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
             child: TextField(
               controller: controller,
               enabled: enabled,
-              onSubmitted: (_) => onSend(),
+              minLines: 1,
+              maxLines: 4,
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
+              scrollPhysics: const ClampingScrollPhysics(),
               decoration: const InputDecoration(
                 hintText: 'Preguntá por un lugar, barrio o época…',
               ),

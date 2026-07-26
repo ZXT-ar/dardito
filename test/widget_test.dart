@@ -1,4 +1,5 @@
 import 'package:dardito/app.dart';
+import 'package:dardito/core/auth/auth_service.dart';
 import 'package:dardito/features/legal/legal_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,7 +10,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
 
-    await tester.pumpWidget(const DarditoApp());
+    await tester.pumpWidget(DarditoApp(authService: _TestAuthService()));
     await tester.pump(const Duration(milliseconds: 900));
 
     expect(find.text('La Plata tiene\nmiles de historias.'), findsOneWidget);
@@ -35,7 +36,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
 
-    await tester.pumpWidget(const DarditoApp());
+    await tester.pumpWidget(DarditoApp(authService: _TestAuthService()));
     await tester.pump(const Duration(milliseconds: 900));
     await tester.tap(find.byIcon(Icons.add_circle_rounded));
     await tester.pump(const Duration(milliseconds: 600));
@@ -47,6 +48,19 @@ void main() {
 
     expect(find.text('Vos también sos parte\ndel mapa.'), findsOneWidget);
     expect(find.text('demo@gmail.com'), findsOneWidget);
+    expect(find.text('Elegir'), findsNWidgets(3));
+
+    await tester.ensureVisible(find.text('Elegir').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Elegir').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Elegir fotos desde archivos'), findsOneWidget);
+    expect(find.textContaining('no usará la cámara'), findsOneWidget);
+    expect(find.text('Abrir archivos'), findsOneWidget);
+
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 
@@ -71,4 +85,26 @@ void main() {
     expect(find.text('Política de privacidad'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+class _TestAuthService implements AuthService {
+  AuthUser? _user;
+
+  @override
+  AuthUser? get currentUser => _user;
+
+  @override
+  Future<AuthUser> signIn(AuthProvider provider) async {
+    return _user = const AuthUser(
+      id: 'test-user',
+      name: 'Usuario de prueba',
+      email: 'demo@gmail.com',
+      provider: AuthProvider.google,
+    );
+  }
+
+  @override
+  Future<void> signOut() async {
+    _user = null;
+  }
 }

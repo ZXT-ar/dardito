@@ -9,17 +9,22 @@ class DarditoAssistantReply {
     required this.answer,
     required this.conversationId,
     required this.sourceIds,
+    required this.moderationAction,
+    required this.yellowCount,
   });
 
   final String answer;
   final String conversationId;
   final List<String> sourceIds;
+  final String moderationAction;
+  final int yellowCount;
 }
 
 abstract interface class DarditoAssistantService {
   Future<DarditoAssistantReply> send({
     required String message,
     required String conversationId,
+    required String sessionId,
   });
 }
 
@@ -33,6 +38,7 @@ class FirebaseDarditoAssistantService implements DarditoAssistantService {
   Future<DarditoAssistantReply> send({
     required String message,
     required String conversationId,
+    required String sessionId,
   }) async {
     final response = await _client
         .post(
@@ -41,6 +47,7 @@ class FirebaseDarditoAssistantService implements DarditoAssistantService {
           body: jsonEncode({
             'message': message,
             'conversationId': conversationId,
+            'sessionId': sessionId,
           }),
         )
         .timeout(const Duration(seconds: 45));
@@ -64,10 +71,19 @@ class FirebaseDarditoAssistantService implements DarditoAssistantService {
               .whereType<String>()
               .toList(growable: false)
         : const <String>[];
+    final moderation = decoded['moderation'];
+    final moderationAction = moderation is Map<String, dynamic>
+        ? moderation['action']
+        : null;
+    final yellowCount = moderation is Map<String, dynamic>
+        ? moderation['yellowCount']
+        : null;
     return DarditoAssistantReply(
       answer: answer,
       conversationId: returnedConversationId,
       sourceIds: sourceIds,
+      moderationAction: moderationAction is String ? moderationAction : 'none',
+      yellowCount: yellowCount is int ? yellowCount : 0,
     );
   }
 }
