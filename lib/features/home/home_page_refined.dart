@@ -117,7 +117,7 @@ class RefinedHomeHero extends StatelessWidget {
                         'El Mapa de las\nHistorias de La Plata.',
                         style: Theme.of(context).textTheme.displayLarge
                             ?.copyWith(
-                              color: AppColors.cream,
+                              color: AppColors.ink,
                               fontSize: narrow
                                   ? (c.maxWidth * .115).clamp(34.0, 48.0)
                                   : (c.maxWidth * .052).clamp(48.0, 64.0),
@@ -128,7 +128,7 @@ class RefinedHomeHero extends StatelessWidget {
                         'Dardito te ayuda a descubrirlas.',
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
-                              color: AppColors.yellow,
+                              color: const Color(0xFF876015),
                               fontWeight: FontWeight.w600,
                             ),
                       ),
@@ -138,9 +138,7 @@ class RefinedHomeHero extends StatelessWidget {
                         child: Text(
                           'Explorá las historias, personas, lugares y misterios que hicieron, hacen y siguen haciendo única a La Plata.',
                           style: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(
-                                color: AppColors.cream.withValues(alpha: .78),
-                              ),
+                              ?.copyWith(color: const Color(0xFF595343)),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -148,7 +146,7 @@ class RefinedHomeHero extends StatelessWidget {
                         'La ciudad nunca deja de contarse.',
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
-                              color: AppColors.cream.withValues(alpha: .72),
+                              color: const Color(0xFF6B614D),
                               fontStyle: FontStyle.italic,
                             ),
                       ),

@@ -115,8 +115,8 @@ class HomeExploreInvitation extends StatelessWidget {
                                 fontWeight: FontWeight.w700,
                                 fontSize: 27,
                                 color: progress >= .99
-                                    ? AppColors.yellow
-                                    : AppColors.cream,
+                                    ? const Color(0xFF876015)
+                                    : AppColors.ink,
                                 shadows: progress >= .99
                                     ? [
                                         Shadow(
@@ -132,7 +132,7 @@ class HomeExploreInvitation extends StatelessWidget {
                             const SizedBox(width: 18),
                             const Icon(
                               Icons.arrow_forward,
-                              color: AppColors.yellow,
+                              color: Color(0xFF876015),
                               size: 30,
                             ),
                           ],
@@ -178,7 +178,7 @@ class _CompassPainter extends CustomPainter {
     final c = size.center(Offset.zero);
     final r = size.width / 2 - 9;
     final line = Paint()
-      ..color = AppColors.cream.withValues(alpha: .8)
+      ..color = const Color(0xFF94866B)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
     for (final ratio in [1.0, .965, .80, .69]) {
@@ -206,7 +206,10 @@ class _CompassPainter extends CustomPainter {
         ..close();
       canvas.drawPath(
         p,
-        Paint()..color = AppColors.cream.withValues(alpha: i.isEven ? .88 : .4),
+        Paint()
+          ..color = const Color(
+            0xFFBAAD90,
+          ).withValues(alpha: i.isEven ? .88 : .4),
       );
       canvas.drawPath(
         Path()
@@ -230,7 +233,7 @@ class _CompassPainter extends CustomPainter {
           style: const TextStyle(
             fontFamily: 'Lora',
             fontSize: 25,
-            color: AppColors.cream,
+            color: Color(0xFF665C48),
           ),
         ),
         textDirection: TextDirection.ltr,

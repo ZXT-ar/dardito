@@ -36,7 +36,7 @@ void main() {
     expect(angle(), 0);
     expect(
       tester.widget<Text>(find.text('Explorar el mapa')).style?.color,
-      AppColors.cream,
+      AppColors.ink,
     );
     controller.jumpTo(150);
     await tester.pump();
@@ -46,14 +46,14 @@ void main() {
     expect(angle(), closeTo(math.atan2(labelDistance(800), 195), .001));
     expect(
       tester.widget<Text>(find.text('Explorar el mapa')).style?.color,
-      AppColors.yellow,
+      const Color(0xFF876015),
     );
     controller.jumpTo(0);
     await tester.pump();
     expect(angle(), 0);
     expect(
       tester.widget<Text>(find.text('Explorar el mapa')).style?.color,
-      AppColors.cream,
+      AppColors.ink,
     );
     expect(tester.takeException(), isNull);
   });

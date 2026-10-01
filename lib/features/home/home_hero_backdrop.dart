@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Static reference map behind the hero, softened by two navy gradients.
+/// Static reference map behind the hero, rendered as pale ink on warm paper.
 class HomeHeroBackdrop extends StatelessWidget {
   const HomeHeroBackdrop({super.key, required this.child});
   final Widget child;
@@ -8,7 +8,7 @@ class HomeHeroBackdrop extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     constraints: const BoxConstraints(minHeight: 650),
     clipBehavior: Clip.hardEdge,
-    decoration: const BoxDecoration(color: Color(0xFF102937)),
+    decoration: const BoxDecoration(color: Color(0xFFF7EFDA)),
     child: Stack(
       clipBehavior: Clip.hardEdge,
       children: [
@@ -18,9 +18,34 @@ class HomeHeroBackdrop extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(
-                    'assets/map/hero_la_plata_blue.png',
-                    fit: BoxFit.cover,
+                  ColorFiltered(
+                    // Map luminance becomes a restrained sepia line on paper.
+                    colorFilter: const ColorFilter.matrix([
+                      -.0468,
+                      -.1573,
+                      -.0159,
+                      0,
+                      247,
+                      -.0532,
+                      -.1788,
+                      -.0180,
+                      0,
+                      239,
+                      -.0638,
+                      -.2146,
+                      -.0216,
+                      0,
+                      218,
+                      0,
+                      0,
+                      0,
+                      1,
+                      0,
+                    ]),
+                    child: Image.asset(
+                      'assets/map/hero_la_plata_blue.png',
+                      fit: BoxFit.cover,
+                    ),
                   ),
                   const DecoratedBox(
                     decoration: BoxDecoration(
@@ -29,9 +54,9 @@ class HomeHeroBackdrop extends StatelessWidget {
                         end: Alignment.bottomCenter,
                         stops: [0, .42, 1],
                         colors: [
-                          Color(0x7806131E),
-                          Color(0x0006131E),
-                          Color(0xD406131E),
+                          Color(0x30F7EFDA),
+                          Color(0x00F7EFDA),
+                          Color(0x70F7EFDA),
                         ],
                       ),
                     ),
@@ -43,9 +68,9 @@ class HomeHeroBackdrop extends StatelessWidget {
                         end: Alignment.centerRight,
                         stops: [0, .38, 1],
                         colors: [
-                          Color(0xCF06131E),
-                          Color(0x8F06131E),
-                          Color(0xD806131E),
+                          Color(0xA0F7EFDA),
+                          Color(0x35F7EFDA),
+                          Color(0x50F7EFDA),
                         ],
                       ),
                     ),
@@ -62,7 +87,7 @@ class HomeHeroBackdrop extends StatelessWidget {
           child: IgnorePointer(
             child: Text(
               '© OpenStreetMap contributors',
-              style: TextStyle(fontSize: 9, color: Color(0xFF9CACB5)),
+              style: TextStyle(fontSize: 9, color: Color(0xFF756B55)),
             ),
           ),
         ),
