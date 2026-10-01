@@ -37,7 +37,10 @@ class RefinedHomePage extends StatelessWidget {
   Widget build(BuildContext context) => SingleChildScrollView(
     child: Column(
       children: [
-        _Hero(onExplore: () => onExplore(null), onAsk: () => onNavigate(2)),
+        RefinedHomeHero(
+          onExplore: () => onExplore(null),
+          onAsk: () => onNavigate(2),
+        ),
         const SizedBox(height: 72),
         MaxWidth(
           child: _MapCallout(
@@ -90,8 +93,12 @@ Future<void> _openWhatsAppConversation(BuildContext context) async {
     );
 }
 
-class _Hero extends StatelessWidget {
-  const _Hero({required this.onExplore, required this.onAsk});
+class RefinedHomeHero extends StatelessWidget {
+  const RefinedHomeHero({
+    super.key,
+    required this.onExplore,
+    required this.onAsk,
+  });
   final VoidCallback onExplore;
   final VoidCallback onAsk;
 
@@ -355,30 +362,35 @@ class _DarditoSpeechBubble extends StatelessWidget {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Preguntale a',
-                                style: TextStyle(
-                                  color: AppColors.ink,
-                                  fontSize: 21,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.2,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Preguntale a',
+                                  style: TextStyle(
+                                    color: AppColors.ink,
+                                    fontSize: 21,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.2,
+                                  ),
                                 ),
-                              ),
-                              DarditoAnimatedName(
-                                style: TextStyle(
-                                  fontFamily: 'Lora',
-                                  color: AppColors.ink,
-                                  fontSize: 37,
-                                  fontWeight: FontWeight.w800,
-                                  fontStyle: FontStyle.italic,
-                                  height: 1.2,
+                                DarditoAnimatedName(
+                                  style: TextStyle(
+                                    fontFamily: 'Lora',
+                                    color: AppColors.ink,
+                                    fontSize: 37,
+                                    fontWeight: FontWeight.w800,
+                                    fontStyle: FontStyle.italic,
+                                    height: 1.2,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                         Container(

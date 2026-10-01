@@ -14,6 +14,7 @@ import '../../data/models/story.dart';
 import '../explore/map/dardito_map_surface.dart';
 import '../legal/legal_page.dart';
 import '../story/story_widgets.dart';
+import 'home_page_refined.dart' show RefinedHomeHero;
 
 class HomePage extends StatelessWidget {
   const HomePage({
@@ -34,7 +35,13 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) => SingleChildScrollView(
     child: Column(
       children: [
-        _Hero(onExplore: () => onExplore(null), onAsk: () => onNavigate(2)),
+        if (const bool.fromEnvironment('DARDITO_REFINED_HERO'))
+          RefinedHomeHero(
+            onExplore: () => onExplore(null),
+            onAsk: () => onNavigate(2),
+          )
+        else
+          _Hero(onExplore: () => onExplore(null), onAsk: () => onNavigate(2)),
         const SizedBox(height: 72),
         Entrance(
           delay: const Duration(milliseconds: 80),
