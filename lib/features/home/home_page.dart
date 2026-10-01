@@ -32,51 +32,54 @@ class HomePage extends StatelessWidget {
   final ValueChanged<LegalDocument> onOpenLegal;
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    child: Column(
-      children: [
-        if (const bool.fromEnvironment('DARDITO_REFINED_HERO'))
-          RefinedHomeHero(
-            onExplore: () => onExplore(null),
-            onAsk: () => onNavigate(2),
-          )
-        else
-          _Hero(onExplore: () => onExplore(null), onAsk: () => onNavigate(2)),
-        const SizedBox(height: 72),
-        Entrance(
-          delay: const Duration(milliseconds: 80),
-          child: MaxWidth(
-            child: _MapCallout(
-              stories: stories,
+  Widget build(BuildContext context) => ColoredBox(
+    color: AppColors.heroPaper,
+    child: SingleChildScrollView(
+      child: Column(
+        children: [
+          if (const bool.fromEnvironment('DARDITO_REFINED_HERO'))
+            RefinedHomeHero(
               onExplore: () => onExplore(null),
+              onAsk: () => onNavigate(2),
+            )
+          else
+            _Hero(onExplore: () => onExplore(null), onAsk: () => onNavigate(2)),
+          const SizedBox(height: 72),
+          Entrance(
+            delay: const Duration(milliseconds: 80),
+            child: MaxWidth(
+              child: _MapCallout(
+                stories: stories,
+                onExplore: () => onExplore(null),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 96),
-        Entrance(
-          child: MaxWidth(child: _Categories(onExplore: onExploreCategory)),
-        ),
-        const SizedBox(height: 96),
-        Entrance(
-          delay: const Duration(milliseconds: 80),
-          child: MaxWidth(
-            child: _Featured(
-              stories: stories.where((s) => s.featured).toList(),
-              onExplore: onExplore,
+          const SizedBox(height: 96),
+          Entrance(
+            child: MaxWidth(child: _Categories(onExplore: onExploreCategory)),
+          ),
+          const SizedBox(height: 96),
+          Entrance(
+            delay: const Duration(milliseconds: 80),
+            child: MaxWidth(
+              child: _Featured(
+                stories: stories.where((s) => s.featured).toList(),
+                onExplore: onExplore,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 96),
-        Entrance(
-          delay: const Duration(milliseconds: 180),
-          child: MaxWidth(
-            child: _TrustSection(onContribute: () => onNavigate(3)),
+          const SizedBox(height: 96),
+          Entrance(
+            delay: const Duration(milliseconds: 180),
+            child: MaxWidth(
+              child: _TrustSection(onContribute: () => onNavigate(3)),
+            ),
           ),
-        ),
-        const SizedBox(height: 96),
-        _WhatsAppCallout(onAsk: () => _openWhatsAppConversation(context)),
-        _Footer(onOpenLegal: onOpenLegal),
-      ],
+          const SizedBox(height: 96),
+          _WhatsAppCallout(onAsk: () => _openWhatsAppConversation(context)),
+          _Footer(onOpenLegal: onOpenLegal),
+        ],
+      ),
     ),
   );
 }
@@ -565,7 +568,7 @@ class _MapCalloutState extends State<_MapCallout> {
     borderRadius: BorderRadius.circular(30),
     child: Container(
       padding: const EdgeInsets.all(8),
-      color: AppColors.navy,
+      color: AppColors.heroPaper,
       child: LayoutBuilder(
         builder: (context, c) {
           final narrow = c.maxWidth < 800;
@@ -575,20 +578,20 @@ class _MapCalloutState extends State<_MapCallout> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SectionEyebrow('El mapa vivo', light: true),
+                const SectionEyebrow('El mapa vivo'),
                 const SizedBox(height: 20),
                 Text(
                   'Cada punto guarda\nalgo para contar.',
                   style: Theme.of(
                     context,
-                  ).textTheme.displayMedium?.copyWith(color: AppColors.cream),
+                  ).textTheme.displayMedium?.copyWith(color: AppColors.ink),
                 ),
                 const SizedBox(height: 18),
                 Text(
                   'Recorré La Plata por barrio, época o curiosidad. Encontrá historias documentadas y aportes de vecinos, familias e instituciones.',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.cream.withValues(alpha: .72),
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
                 ),
                 const SizedBox(height: 26),
                 FilledButton.icon(
@@ -774,7 +777,7 @@ class _DesktopWhatsAppCallout extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     height: 390,
     child: ColoredBox(
-      color: AppColors.cream,
+      color: AppColors.heroPaper,
       child: Stack(
         children: [
           const Positioned(
@@ -782,7 +785,7 @@ class _DesktopWhatsAppCallout extends StatelessWidget {
             right: 0,
             bottom: 0,
             left: 0,
-            child: ColoredBox(color: AppColors.yellow),
+            child: ColoredBox(color: AppColors.heroPaper),
           ),
           Positioned.fill(
             child: MaxWidth(
@@ -827,7 +830,7 @@ class _CompactWhatsAppCallout extends StatelessWidget {
       final artHeight = phone ? 250.0 : 290.0;
       final artWidth = phone ? 188.0 : 218.0;
       return ColoredBox(
-        color: AppColors.cream,
+        color: AppColors.heroPaper,
         child: Stack(
           alignment: Alignment.topCenter,
           children: [
@@ -835,7 +838,7 @@ class _CompactWhatsAppCallout extends StatelessWidget {
               width: double.infinity,
               margin: const EdgeInsets.only(top: 80),
               padding: EdgeInsets.fromLTRB(24, phone ? 205 : 230, 24, 52),
-              color: AppColors.yellow,
+              color: AppColors.heroPaper,
               child: MaxWidth(
                 padding: EdgeInsets.zero,
                 child: Column(
@@ -958,7 +961,7 @@ class _Footer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    color: AppColors.ink,
+    color: AppColors.heroPaper,
     child: LayoutBuilder(
       builder: (context, constraints) {
         final mobile = constraints.maxWidth < 700;
@@ -972,7 +975,7 @@ class _Footer extends StatelessWidget {
               child: Text(
                 'Historias, lugares y personas de ayer y de hoy que hacen única a La Plata.',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppColors.cream.withValues(alpha: .72),
+                  color: AppColors.muted,
                   height: 1.35,
                 ),
               ),
@@ -992,7 +995,7 @@ class _Footer extends StatelessWidget {
               children: [
                 TextButton(
                   onPressed: () => onOpenLegal(LegalDocument.terms),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.paper),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.ink),
                   child: const Text('Términos y condiciones'),
                 ),
               ],
@@ -1003,7 +1006,7 @@ class _Footer extends StatelessWidget {
               textAlign: mobile ? TextAlign.left : TextAlign.right,
               style: Theme.of(
                 context,
-              ).textTheme.headlineSmall?.copyWith(color: AppColors.cream),
+              ).textTheme.headlineSmall?.copyWith(color: AppColors.ink),
             ),
           ],
         );
@@ -1031,7 +1034,7 @@ class _Footer extends StatelessWidget {
                     ],
                   ),
                 const SizedBox(height: 44),
-                Divider(color: AppColors.cream.withValues(alpha: .14)),
+                Divider(color: AppColors.line),
                 const SizedBox(height: 22),
                 if (mobile)
                   Column(
@@ -1039,7 +1042,7 @@ class _Footer extends StatelessWidget {
                     children: [
                       const Text(
                         '© 2026 El Mapa de las Historias de La Plata',
-                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                        style: TextStyle(color: AppColors.muted, fontSize: 12),
                       ),
                       const SizedBox(height: 8),
                       const _SimbiosisDigitalLink(),
@@ -1050,7 +1053,7 @@ class _Footer extends StatelessWidget {
                     children: [
                       Text(
                         '© 2026 El Mapa de las Historias de La Plata',
-                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                        style: TextStyle(color: AppColors.muted, fontSize: 12),
                       ),
                       Spacer(),
                       _SimbiosisDigitalLink(),
@@ -1069,7 +1072,7 @@ class _FooterBrandMark extends StatelessWidget {
   const _FooterBrandMark();
 
   @override
-  Widget build(BuildContext context) => const ProjectMark(light: true);
+  Widget build(BuildContext context) => const ProjectMark();
 }
 
 class _SimbiosisDigitalLink extends StatelessWidget {
@@ -1087,7 +1090,7 @@ class _SimbiosisDigitalLink extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: 4),
       child: Text(
         'Desarrollado por SimbiosisDigital',
-        style: TextStyle(color: Colors.white54, fontSize: 12),
+        style: TextStyle(color: AppColors.muted, fontSize: 12),
       ),
     ),
   );

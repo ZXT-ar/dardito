@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
+
 /// Static reference map behind the hero, rendered as pale ink on warm paper.
 class HomeHeroBackdrop extends StatelessWidget {
   const HomeHeroBackdrop({super.key, required this.child});
@@ -8,7 +10,7 @@ class HomeHeroBackdrop extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     constraints: const BoxConstraints(minHeight: 650),
     clipBehavior: Clip.hardEdge,
-    decoration: const BoxDecoration(color: Color(0xFFF7EFDA)),
+    decoration: const BoxDecoration(color: AppColors.heroPaper),
     child: Stack(
       clipBehavior: Clip.hardEdge,
       children: [

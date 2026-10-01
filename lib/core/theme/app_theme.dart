@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppColors {
+  static const heroPaper = Color(0xFFF7EFDA);
   static const ink = Color(0xFF171815);
   static const cream = Color(0xFFF4EFE4);
   static const paper = Color(0xFFFFFBF2);
