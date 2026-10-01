@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:ui_web' as ui_web;
@@ -7,6 +8,7 @@ import 'package:google_maps/google_maps.dart' as gmaps;
 import 'package:web/web.dart' as web;
 
 import '../../../data/models/story.dart';
+import 'story_clusters.dart';
 
 abstract interface class DarditoMapController {
   void zoomIn();
@@ -24,6 +26,8 @@ class DarditoMapSurface extends StatefulWidget {
     required this.bottomPadding,
     required this.rightPadding,
     this.interactive = true,
+    this.lightTheme = false,
+    this.onCluster,
   });
 
   final List<CityStory> stories;
@@ -34,6 +38,8 @@ class DarditoMapSurface extends StatefulWidget {
   final double bottomPadding;
   final double rightPadding;
   final bool interactive;
+  final bool lightTheme;
+  final ValueChanged<List<CityStory>>? onCluster;
 
   @override
   State<DarditoMapSurface> createState() => _DarditoMapSurfaceState();
@@ -45,6 +51,10 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
   gmaps.Map? _map;
   web.HTMLDivElement? _element;
   final List<gmaps.Marker> _markers = [];
+  final List<StreamSubscription<dynamic>> _markerListeners = [];
+  StreamSubscription<void>? _zoomListener;
+
+  String get _backgroundColor => widget.lightTheme ? '#F4EFE4' : '#102937';
 
   @override
   void initState() {
@@ -58,7 +68,7 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
         ..style.width = '100%'
         ..style.height = '100%'
         ..style.pointerEvents = widget.interactive ? 'auto' : 'none'
-        ..style.backgroundColor = '#102937';
+        ..style.backgroundColor = _backgroundColor;
       _element = element;
       final map = gmaps.Map(
         element,
@@ -74,7 +84,7 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
           ..keyboardShortcuts = widget.interactive
           ..disableDefaultUI = true
           ..clickableIcons = false
-          ..backgroundColor = '#102937'
+          ..backgroundColor = _backgroundColor
           ..restriction = (gmaps.MapRestriction()
             ..latLngBounds = gmaps.LatLngBounds(
               gmaps.LatLng(-35.0800, -58.1500),
@@ -85,6 +95,7 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
       );
       _map = map;
       _replaceMarkers();
+      _zoomListener = map.onZoomChanged.listen((_) => _replaceMarkers());
       widget.onReady(_WebDarditoMapController(map));
       return element;
     });
@@ -98,11 +109,17 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
             oldWidget.selected?.id != widget.selected?.id)) {
       _replaceMarkers();
     }
-    if (_map != null && oldWidget.style != widget.style) {
-      _map!.options = gmaps.MapOptions()..styles = _decodeStyles(widget.style);
+    if (_map != null &&
+        (oldWidget.style != widget.style ||
+            oldWidget.lightTheme != widget.lightTheme)) {
+      _element?.style.backgroundColor = _backgroundColor;
+      _map!.options = gmaps.MapOptions()
+        ..backgroundColor = _backgroundColor
+        ..styles = _decodeStyles(widget.style);
     }
     if (oldWidget.interactive != widget.interactive) {
       _applyInteractivity();
+      _replaceMarkers();
     }
   }
 
@@ -137,11 +154,42 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
   void _replaceMarkers() {
     final map = _map;
     if (map == null) return;
+    for (final listener in _markerListeners) {
+      listener.cancel();
+    }
+    _markerListeners.clear();
     for (final marker in _markers) {
       marker.map = null;
     }
     _markers.clear();
-    for (final story in widget.stories) {
+    for (final cluster in clusterStories(widget.stories, map.zoom.toDouble())) {
+      if (cluster.stories.length > 1) {
+        final count = cluster.stories.length;
+        final selected = cluster.stories.any(
+          (s) => s.id == widget.selected?.id,
+        );
+        final marker = gmaps.Marker(
+          gmaps.MarkerOptions()
+            ..position = gmaps.LatLng(cluster.latitude, cluster.longitude)
+            ..map = map
+            ..title = '$count historias en esta zona · tocar para elegir'
+            ..clickable = widget.interactive && widget.onCluster != null
+            ..cursor = 'pointer'
+            ..optimized = false
+            ..icon = _clusterIcon(count, selected)
+            ..zIndex = selected ? 12 : 5,
+        );
+        if (widget.interactive && widget.onCluster != null) {
+          _markerListeners.add(
+            marker.onClick.listen(
+              (_) => widget.onCluster!(List.unmodifiable(cluster.stories)),
+            ),
+          );
+        }
+        _markers.add(marker);
+        continue;
+      }
+      final story = cluster.stories.single;
       final isSelected = story.id == widget.selected?.id;
       final marker = gmaps.Marker(
         gmaps.MarkerOptions()
@@ -155,10 +203,39 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
           ..zIndex = isSelected ? 10 : 1,
       );
       if (widget.interactive) {
-        marker.onClick.listen((_) => widget.onSelect(story));
+        _markerListeners.add(
+          marker.onClick.listen((_) => widget.onSelect(story)),
+        );
       }
       _markers.add(marker);
     }
+  }
+
+  gmaps.Icon _clusterIcon(int count, bool selected) {
+    final svg =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="68" height="68" viewBox="0 0 68 68">'
+        '<circle cx="34" cy="34" r="32" fill="#102937" fill-opacity=".25"/>'
+        '<circle cx="34" cy="32" r="27" fill="${selected ? '#F4C542' : '#F4EFE4'}" stroke="#09527A" stroke-width="5"/>'
+        '<circle cx="55" cy="12" r="6" fill="#F4C542"/>'
+        '<text x="34" y="39" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#102937">$count</text></svg>';
+    return gmaps.Icon(
+      url: 'data:image/svg+xml;charset=UTF-8,${Uri.encodeComponent(svg)}',
+      scaledSize: gmaps.Size(68, 68),
+      anchor: gmaps.Point(34, 34),
+    );
+  }
+
+  @override
+  void dispose() {
+    _zoomListener?.cancel();
+    for (final listener in _markerListeners) {
+      listener.cancel();
+    }
+    for (final marker in _markers) {
+      marker.map = null;
+    }
+    _map = null;
+    super.dispose();
   }
 
   gmaps.Icon _markerIcon(StoryCategory category, {required bool selected}) {

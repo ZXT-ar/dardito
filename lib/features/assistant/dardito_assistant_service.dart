@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../../core/config/backend_config.dart';
@@ -40,10 +42,23 @@ class FirebaseDarditoAssistantService implements DarditoAssistantService {
     required String conversationId,
     required String sessionId,
   }) async {
+    if (message.characters.length > 350 || message.trim().isEmpty) {
+      throw const FormatException(
+        'La pregunta debe tener entre 1 y 350 caracteres.',
+      );
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    final token = await user?.getIdToken();
+    if (user == null || token == null || token.isEmpty) {
+      throw const FormatException('Se requiere una sesión autenticada.');
+    }
     final response = await _client
         .post(
           BackendConfig.chatEndpoint,
-          headers: const {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
           body: jsonEncode({
             'message': message,
             'conversationId': conversationId,

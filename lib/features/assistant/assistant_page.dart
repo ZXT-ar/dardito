@@ -1,14 +1,49 @@
+import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/security/client_session_id.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/story.dart';
 import 'dardito_assistant_service.dart';
+import 'assistant_response.dart';
+import 'story_image_service.dart';
+import 'story_plate.dart';
+import 'chat_session_store.dart';
+
+// The reading surface has its own palette; the rest of the app stays independent.
+class _ReadingPalette {
+  const _ReadingPalette(this.dark);
+  final bool dark;
+  Color get canvas => dark ? AppColors.navy : const Color(0xFFEDE7DA);
+  Color get ink => dark ? AppColors.paper : AppColors.ink;
+  Color get muted => dark ? const Color(0xFFB6BDBD) : AppColors.muted;
+  Color get line => dark ? const Color(0xFF40505A) : const Color(0xFFC9C0AE);
+  Color get inset => dark ? const Color(0xFF152A38) : const Color(0xFFE3DCCB);
+}
+
+const _assistantGreetings = [
+  '¡Hola! Soy Dardito.\n'
+      'Te acompaño a descubrir las historias, personas, lugares, barrios y misterios que hicieron, hacen y siguen haciendo única a La Plata.\n'
+      'Podés preguntarme por un lugar, una persona, un barrio, una época… o pedirme que te muestre algo al azar.\n'
+      '¿Qué querés descubrir hoy?',
+  '¡Buenas! Soy Dardito.\n'
+      'La Plata guarda historias en cada esquina: personas, lugares, barrios, épocas y misterios que todavía resuenan.\n'
+      'Decime por dónde querés empezar o pedime una historia al azar.\n'
+      '¿Qué descubrimos hoy?',
+  '¡Qué bueno encontrarte! Soy Dardito.\n'
+      'Hay otra La Plata escondida en sus calles: historias, protagonistas, rincones y secretos esperando ser descubiertos.\n'
+      'Elegí un tema, un barrio o una época; si preferís, dejo que el azar nos guíe.\n'
+      '¿Vamos?',
+];
+
+String _randomAssistantGreeting() =>
+    _assistantGreetings[Random().nextInt(_assistantGreetings.length)];
 
 class AssistantPage extends StatefulWidget {
   const AssistantPage({
@@ -16,10 +51,20 @@ class AssistantPage extends StatefulWidget {
     required this.stories,
     required this.onExplore,
     required this.onNavigate,
+    this.contextStory,
+    this.assistantService,
+    this.imageService,
+    this.userId,
+    this.sessionStore,
   });
   final List<CityStory> stories;
   final ValueChanged<CityStory?> onExplore;
   final ValueChanged<int> onNavigate;
+  final CityStory? contextStory;
+  final DarditoAssistantService? assistantService;
+  final StoryImageService? imageService;
+  final String? userId;
+  final ChatSessionStore? sessionStore;
 
   @override
   State<AssistantPage> createState() => _AssistantPageState();
@@ -31,27 +76,85 @@ class _Message {
     this.fromDardito = false,
     this.story,
     this.moderationAction = 'none',
+    this.images,
+    this.sourceIds = const [],
   });
   final String text;
   final bool fromDardito;
   final CityStory? story;
   final String moderationAction;
+  final Future<List<AssistantStoryImage>>? images;
+  final List<String> sourceIds;
 }
 
 class _AssistantPageState extends State<AssistantPage> {
   final _controller = TextEditingController();
   final _scroll = ScrollController();
-  final DarditoAssistantService _assistant = FirebaseDarditoAssistantService();
-  late final String _conversationId =
+  late final StoryImageService _images =
+      widget.imageService ?? StoryImageService();
+  late final DarditoAssistantService _assistant =
+      widget.assistantService ?? FirebaseDarditoAssistantService();
+  late String _conversationId =
       'web-${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(0x7fffffff)}';
   final String _sessionId = ClientSessionId.value;
+  late final _cache = widget.sessionStore ?? ChatSessionStore();
   bool _typing = false;
-  final List<_Message> _messages = const [
-    _Message(
-      '¡Hola! Soy Dardito. Estoy para ayudarte a mirar La Plata con otros ojos. ¿Qué te gustaría descubrir?',
-      fromDardito: true,
-    ),
-  ].toList();
+  bool _hasReply = false;
+  bool _dark = false;
+  _ReadingPalette get _palette => _ReadingPalette(_dark);
+  final Map<_Message, GlobalKey> _messageKeys = {};
+
+  void _showMessage(_Message message) {
+    final context = _messageKeys[message]?.currentContext;
+    final object = context?.findRenderObject();
+    if (object != null && _scroll.hasClients) {
+      _scroll.position.ensureVisible(
+        object,
+        duration: const Duration(milliseconds: 280),
+        alignment: 0.02,
+      );
+    }
+  }
+
+  Widget _history() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 22),
+        child: Text(
+          'ESTA CONVERSACIÓN',
+          style: TextStyle(
+            color: _palette.muted,
+            fontSize: 10,
+            letterSpacing: 1.5,
+          ),
+        ),
+      ),
+      for (final message in _messages.where((m) => !m.fromDardito))
+        TextButton(
+          onPressed: () => _showMessage(message),
+          style: TextButton.styleFrom(
+            foregroundColor: _palette.ink,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
+          child: Text(
+            message.text,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: 'Lora',
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+        ),
+    ],
+  );
+  final List<_Message> _messages = [
+    _Message(_randomAssistantGreeting(), fromDardito: true),
+  ];
 
   static const suggestions = [
     'Una historia al azar',
@@ -60,15 +163,112 @@ class _AssistantPageState extends State<AssistantPage> {
     '¿Qué pasó en 1882?',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _restoreConversation();
+    _controller.addListener(_saveConversation);
+    final story = widget.contextStory;
+    if (story != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _send(
+          'Quiero saber más sobre la historia “${story.title}”. Contame más.',
+        );
+      });
+    }
+  }
+
+  void _saveConversation() {
+    final userId = widget.userId;
+    if (userId == null) return;
+    _cache.write(
+      userId,
+      jsonEncode({
+        'version': 1,
+        'conversationId': _conversationId,
+        'draft': _controller.text,
+        'hasReply': _hasReply,
+        'messages': [
+          for (final m in _messages)
+            {
+              'text': m.text,
+              'fromDardito': m.fromDardito,
+              'storyId': m.story?.id,
+              'moderationAction': m.moderationAction,
+              'sourceIds': m.sourceIds,
+            },
+        ],
+      }),
+    );
+  }
+
+  void _restoreConversation() {
+    final userId = widget.userId;
+    if (userId == null) return;
+    try {
+      final raw = _cache.read(userId);
+      if (raw == null) return;
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      if (data['version'] != 1 ||
+          data['conversationId'] is! String ||
+          data['messages'] is! List) {
+        return;
+      }
+      final restored = <_Message>[];
+      for (final item in data['messages'] as List) {
+        final m = item as Map<String, dynamic>;
+        final ids = (m['sourceIds'] as List? ?? [])
+            .whereType<String>()
+            .toList();
+        CityStory? story;
+        for (final candidate in widget.stories) {
+          if (candidate.id == m['storyId']) {
+            story = candidate;
+            break;
+          }
+        }
+        final moderation = m['moderationAction'] as String? ?? 'none';
+        restored.add(
+          _Message(
+            m['text'] as String,
+            fromDardito: m['fromDardito'] == true,
+            story: story,
+            moderationAction: moderation,
+            sourceIds: ids,
+            images: ids.isNotEmpty && moderation == 'none'
+                ? _images.load(ids)
+                : null,
+          ),
+        );
+      }
+      if (restored.isEmpty) return;
+      _messages
+        ..clear()
+        ..addAll(restored);
+      _conversationId = data['conversationId'] as String;
+      _hasReply = data['hasReply'] == true;
+      _controller.text = (data['draft'] as String? ?? '').characters
+          .take(350)
+          .toString();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showMessage(_messages.last);
+      });
+    } catch (_) {
+      _cache.clear(userId);
+    }
+  }
+
   Future<void> _send([String? preset]) async {
     final text = (preset ?? _controller.text).trim();
-    if (text.isEmpty || _typing) return;
+    if (text.isEmpty || _typing || text.characters.length > 350) return;
     _controller.clear();
     setState(() {
       _messages.add(_Message(text));
       _typing = true;
     });
-    _toBottom();
+    _saveConversation();
+    _toBottom(onlyWhileTyping: true);
     try {
       final reply = await _assistant.send(
         message: text,
@@ -85,16 +285,25 @@ class _AssistantPageState extends State<AssistantPage> {
       }
       setState(() {
         _typing = false;
+        _hasReply = true;
         _messages.add(
           _Message(
             reply.answer,
             fromDardito: true,
             story: story,
             moderationAction: reply.moderationAction,
+            sourceIds: reply.sourceIds,
+            images:
+                reply.moderationAction == 'none' && reply.sourceIds.isNotEmpty
+                ? _images.load(reply.sourceIds)
+                : null,
           ),
         );
       });
-      _toBottom();
+      _saveConversation();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showMessage(_messages.last);
+      });
     } catch (error) {
       if (!mounted) return;
       debugPrint('No se pudo consultar el backend de Dardito: $error');
@@ -108,22 +317,27 @@ class _AssistantPageState extends State<AssistantPage> {
           ),
         );
       });
+      _saveConversation();
       _toBottom();
     }
   }
 
-  void _toBottom() => Future.delayed(const Duration(milliseconds: 80), () {
-    if (_scroll.hasClients) {
-      _scroll.animateTo(
-        _scroll.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOut,
-      );
-    }
-  });
+  void _toBottom({bool onlyWhileTyping = false}) =>
+      Future.delayed(const Duration(milliseconds: 80), () {
+        if (onlyWhileTyping && !_typing) return;
+        if (_scroll.hasClients) {
+          _scroll.animateTo(
+            _scroll.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOut,
+          );
+        }
+      });
 
   @override
   void dispose() {
+    if (widget.imageService == null) _images.dispose();
+    _controller.removeListener(_saveConversation);
     _controller.dispose();
     _scroll.dispose();
     super.dispose();
@@ -131,90 +345,106 @@ class _AssistantPageState extends State<AssistantPage> {
 
   @override
   Widget build(BuildContext context) {
-    final desktop = MediaQuery.sizeOf(context).width >= AppBreakpoints.desktop;
-    return Container(
-      color: AppColors.cream,
-      child: Padding(
-        padding: EdgeInsets.only(top: desktop ? 98 : 0),
+    final wide =
+        MediaQuery.sizeOf(context).width >= 1180 &&
+        MediaQuery.textScalerOf(context).scale(1) < 1.4;
+    return ColoredBox(
+      color: _palette.canvas,
+      child: SafeArea(
+        bottom: false,
         child: MaxWidth(
           padding: EdgeInsets.zero,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Column(
             children: [
-              if (desktop)
-                const Padding(
-                  padding: EdgeInsets.all(18),
-                  child: SizedBox(width: 340, child: _AssistantIntro()),
-                ),
+              _ChatHeader(
+                onNavigate: widget.onNavigate,
+                palette: _palette,
+                onToggleMode: () => setState(() => _dark = !_dark),
+              ),
               Expanded(
-                child: Container(
-                  margin: desktop
-                      ? const EdgeInsets.fromLTRB(0, 18, 18, 18)
-                      : EdgeInsets.zero,
-                  decoration: BoxDecoration(
-                    color: AppColors.paper,
-                    borderRadius: BorderRadius.circular(desktop ? 28 : 0),
-                    border: desktop ? Border.all(color: AppColors.line) : null,
-                  ),
-                  child: Column(
-                    children: [
-                      _ChatHeader(
-                        onNavigate: widget.onNavigate,
-                        onWhatsApp: () async {
-                          final uri = Uri.parse(
-                            'https://wa.me/?text=${Uri.encodeComponent('Hola Dardito, contame una historia de La Plata')}',
-                          );
-                          await launchUrl(
-                            uri,
-                            mode: LaunchMode.externalApplication,
-                          );
-                        },
-                      ),
-                      Expanded(
-                        child: ListView.builder(
-                          controller: _scroll,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 24,
-                          ),
-                          itemCount: _messages.length + (_typing ? 1 : 0),
-                          itemBuilder: (context, i) => i == _messages.length
-                              ? const _TypingBubble()
-                              : _MessageBubble(
-                                  message: _messages[i],
-                                  onMap: () =>
-                                      widget.onExplore(_messages[i].story),
-                                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (wide && _hasReply)
+                      SizedBox(
+                        width: 190,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 32, right: 16),
+                          child: SingleChildScrollView(child: _history()),
                         ),
                       ),
-                      if (_messages.length == 1)
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
-                          child: Row(
-                            children: [
-                              for (final s in suggestions)
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: ActionChip(
-                                    onPressed: () => _send(s),
-                                    avatar: const Icon(
-                                      Icons.auto_awesome,
-                                      size: 16,
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              key: const ValueKey('chat-scroll'),
+                              controller: _scroll,
+                              padding: EdgeInsets.fromLTRB(
+                                wide ? 32 : 16,
+                                28,
+                                wide ? 32 : 16,
+                                32,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  for (var i = 0; i < _messages.length; i++)
+                                    KeyedSubtree(
+                                      key: _messageKeys.putIfAbsent(
+                                        _messages[i],
+                                        () => GlobalKey(),
+                                      ),
+                                      child: _MessageBubble(
+                                        message: _messages[i],
+                                        palette: _palette,
+                                        pageNumber: _messages
+                                            .take(i + 1)
+                                            .where((m) => m.fromDardito)
+                                            .length,
+                                        onMap: () => widget.onExplore(
+                                          _messages[i].story,
+                                        ),
+                                      ),
                                     ),
-                                    label: Text(s),
-                                  ),
-                                ),
-                            ],
+                                  if (_typing) _TypingBubble(palette: _palette),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                      _Composer(
-                        controller: _controller,
-                        enabled: !_typing,
-                        onSend: _send,
+                          if (_messages.length == 1)
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                              child: Row(
+                                children: [
+                                  for (final suggestion in suggestions)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: OutlinedButton(
+                                        onPressed: () => _send(suggestion),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: _palette.ink,
+                                          side: BorderSide(
+                                            color: _palette.line,
+                                          ),
+                                        ),
+                                        child: Text(suggestion),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          _Composer(
+                            controller: _controller,
+                            enabled: !_typing,
+                            onSend: _send,
+                            palette: _palette,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -225,48 +455,14 @@ class _AssistantPageState extends State<AssistantPage> {
   }
 }
 
-class _AssistantIntro extends StatelessWidget {
-  const _AssistantIntro();
-  @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(
-      color: AppColors.navy,
-      borderRadius: BorderRadius.circular(28),
-    ),
-    padding: const EdgeInsets.all(34),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Spacer(),
-        const DarditoMark(light: true),
-        const SizedBox(height: 34),
-        Text(
-          'Preguntá.\nExplorá.\nVolvé a mirar.',
-          style: Theme.of(
-            context,
-          ).textTheme.displayMedium?.copyWith(color: AppColors.cream),
-        ),
-        const SizedBox(height: 18),
-        Text(
-          'Dardito conecta historias y lugares. Si una versión no está verificada, te lo cuenta con claridad.',
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            color: AppColors.cream.withValues(alpha: .68),
-          ),
-        ),
-        const Spacer(),
-        const TrustBadge(
-          icon: Icons.shield_outlined,
-          label: 'Respuestas sobre contenido curado',
-          color: AppColors.yellow,
-        ),
-      ],
-    ),
-  );
-}
-
 class _ChatHeader extends StatelessWidget {
-  const _ChatHeader({required this.onWhatsApp, required this.onNavigate});
-  final VoidCallback onWhatsApp;
+  const _ChatHeader({
+    required this.onNavigate,
+    required this.palette,
+    required this.onToggleMode,
+  });
+  final _ReadingPalette palette;
+  final VoidCallback onToggleMode;
   final ValueChanged<int> onNavigate;
 
   void _openMenu(BuildContext context) => showGeneralDialog<void>(
@@ -301,30 +497,35 @@ class _ChatHeader extends StatelessWidget {
     final mobile = MediaQuery.sizeOf(context).width < AppBreakpoints.desktop;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: mobile ? 14 : 20, vertical: 14),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.line)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: palette.line)),
       ),
       child: Row(
         children: [
           const _DarditoFace(size: 46),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Dardito',
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                  style: TextStyle(
+                    fontFamily: 'Lora',
+                    color: palette.ink,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 23,
+                  ),
                 ),
                 Row(
                   children: [
-                    Icon(Icons.circle, color: Color(0xFF4D8B57), size: 9),
+                    const Icon(Icons.circle, color: Color(0xFF4D8B57), size: 9),
                     SizedBox(width: 5),
                     Flexible(
                       child: Text(
                         'Listo para descubrir',
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12, color: AppColors.muted),
+                        style: TextStyle(fontSize: 11, color: palette.muted),
                       ),
                     ),
                   ],
@@ -332,15 +533,31 @@ class _ChatHeader extends StatelessWidget {
               ],
             ),
           ),
-          TextButton.icon(
-            onPressed: onWhatsApp,
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.symmetric(horizontal: mobile ? 8 : 12),
+          IconButton(
+            tooltip: palette.dark
+                ? 'Activar modo claro'
+                : 'Activar modo oscuro',
+            onPressed: onToggleMode,
+            color: palette.ink,
+            icon: Icon(
+              palette.dark
+                  ? Icons.light_mode_outlined
+                  : Icons.dark_mode_outlined,
+              size: 21,
             ),
-            icon: const Icon(Icons.open_in_new_rounded, size: 16),
-            label: const Text('WhatsApp'),
           ),
-          if (mobile) ...[
+          if (!mobile && MediaQuery.textScalerOf(context).scale(1) < 1.4) ...[
+            for (final entry in [
+              (0, 'Inicio'),
+              (1, 'Explorar'),
+              (3, 'Compartir'),
+            ])
+              TextButton(
+                onPressed: () => onNavigate(entry.$1),
+                style: TextButton.styleFrom(foregroundColor: palette.ink),
+                child: Text(entry.$2),
+              ),
+          ] else ...[
             const SizedBox(width: 2),
             Semantics(
               button: true,
@@ -538,111 +755,272 @@ class _ChatNavigationOverlay extends StatelessWidget {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message, required this.onMap});
+  const _MessageBubble({
+    required this.message,
+    required this.onMap,
+    required this.pageNumber,
+    required this.palette,
+  });
   final _Message message;
   final VoidCallback onMap;
+  final int pageNumber;
+  final _ReadingPalette palette;
+
   @override
   Widget build(BuildContext context) {
-    final isYellow = message.moderationAction == 'yellow';
-    final isRed =
-        message.moderationAction == 'red' ||
-        message.moderationAction == 'blocked';
-    final darditoColor = isRed
-        ? const Color(0xFFFFD8D4)
-        : isYellow
-        ? const Color(0xFFFFF1BF)
-        : AppColors.cream;
-    final borderColor = isRed
-        ? const Color(0xFFC62828)
-        : isYellow
-        ? const Color(0xFFE0A800)
-        : Colors.transparent;
-    final bubble = Container(
-      constraints: const BoxConstraints(maxWidth: 620),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: message.fromDardito ? darditoColor : AppColors.ink,
-        border: message.fromDardito && (isYellow || isRed)
-            ? Border.all(color: borderColor, width: 1.5)
-            : null,
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(18),
-          topRight: const Radius.circular(18),
-          bottomLeft: Radius.circular(message.fromDardito ? 4 : 18),
-          bottomRight: Radius.circular(message.fromDardito ? 18 : 4),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (isYellow || isRed) ...[
-            Row(
-              mainAxisSize: MainAxisSize.min,
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    if (!message.fromDardito) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(8, 12, 8, 22),
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: FractionallySizedBox(
+            widthFactor: .85,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Icon(
-                  isRed ? Icons.block_rounded : Icons.warning_amber_rounded,
-                  size: 17,
-                  color: borderColor,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.circle, size: 6, color: palette.muted),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Vos',
+                      style: TextStyle(fontSize: 11, color: palette.muted),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  isRed ? 'TARJETA ROJA' : 'TARJETA AMARILLA',
+                const SizedBox(height: 8),
+                SelectableText(
+                  message.text,
+                  textAlign: TextAlign.right,
                   style: TextStyle(
-                    color: borderColor,
-                    fontSize: 11,
-                    letterSpacing: .8,
-                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Lora',
+                    fontSize: 20,
+                    height: 1.4,
+                    color: palette.ink,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+          ),
+        ),
+      );
+    }
+    final warning = message.moderationAction == 'yellow';
+    final blocked =
+        message.moderationAction == 'red' ||
+        message.moderationAction == 'blocked';
+    final normal = !warning && !blocked;
+    final color = blocked ? const Color(0xFFC62828) : const Color(0xFF8B6800);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 28, right: 6),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          if (normal) ...[
+            Positioned(
+              top: 9,
+              left: 9,
+              right: -6,
+              bottom: -7,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD0C4AA),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 5,
+              left: 5,
+              right: -3,
+              bottom: -3,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8DDC8),
+                  border: Border.all(color: const Color(0xFFB5A88E)),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ),
           ],
-          Text(
-            message.text,
-            style: TextStyle(
-              color: message.fromDardito ? AppColors.ink : AppColors.paper,
-              height: 1.45,
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.fromLTRB(
+              compact ? 22 : 38,
+              22,
+              compact ? 22 : 38,
+              24,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.paper,
+              border: Border.all(
+                color: normal ? AppColors.line : color,
+                width: normal ? 1 : 2,
+              ),
+              borderRadius: BorderRadius.circular(6),
+              boxShadow: [
+                BoxShadow(
+                  color: palette.dark
+                      ? const Color(0x30000000)
+                      : const Color(0x14604D29),
+                  blurRadius: 22,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (normal) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(right: 32),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'DARDITO',
+                            style: TextStyle(
+                              fontSize: 9,
+                              letterSpacing: 2,
+                              color: AppColors.muted,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          pageNumber.toString().padLeft(2, '0'),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12, bottom: 24),
+                    child: Divider(height: 1, color: AppColors.line),
+                  ),
+                  if (message.images == null)
+                    AssistantResponse(text: message.text)
+                  else
+                    FutureBuilder<List<AssistantStoryImage>>(
+                      future: message.images,
+                      builder: (context, snapshot) {
+                        final images = snapshot.data ?? <AssistantStoryImage>[];
+                        if (images.isEmpty) {
+                          return AssistantResponse(text: message.text);
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (final entry in images.indexed)
+                              StoryPlate(
+                                image: NetworkImage(entry.$2.url),
+                                title: entry.$2.title,
+                                number: entry.$1 + 1,
+                                leading: entry.$1 == 0
+                                    ? AssistantResponse(text: message.text)
+                                    : null,
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                ] else ...[
+                  Text(
+                    blocked ? 'TARJETA ROJA' : 'TARJETA AMARILLA',
+                    style: TextStyle(color: color, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    message.text,
+                    style: const TextStyle(fontSize: 16, height: 1.6),
+                  ),
+                ],
+                if (normal) ...[
+                  const SizedBox(height: 24),
+                  const Divider(height: 1, color: AppColors.line),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Hoja ${pageNumber.toString().padLeft(2, '0')}',
+                          style: const TextStyle(
+                            fontFamily: 'Lora',
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Copiar respuesta',
+                        icon: const Icon(
+                          Icons.copy_outlined,
+                          size: 17,
+                          color: AppColors.muted,
+                        ),
+                        onPressed: () async {
+                          await Clipboard.setData(
+                            ClipboardData(text: message.text),
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Respuesta copiada'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+                if (message.story != null) ...[
+                  const SizedBox(height: 22),
+                  const Divider(color: AppColors.line),
+                  TextButton.icon(
+                    onPressed: onMap,
+                    icon: const Icon(Icons.location_on_outlined, size: 18),
+                    label: const Text('Ver en el mapa'),
+                  ),
+                ],
+              ],
             ),
           ),
-          if (message.story != null) ...[
-            const SizedBox(height: 14),
-            TextButton.icon(
-              onPressed: onMap,
-              icon: const Icon(Icons.location_on_outlined, size: 18),
-              label: const Text('Ver en el mapa'),
-            ),
-          ],
-        ],
-      ),
-    );
-    return Align(
-      alignment: message.fromDardito
-          ? Alignment.centerLeft
-          : Alignment.centerRight,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 14),
-        child: message.fromDardito
-            ? ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 668),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const _DarditoFace(size: 34, circular: true),
-                    const SizedBox(width: 9),
-                    Flexible(child: bubble),
-                  ],
+          if (normal)
+            Positioned(
+              top: -5,
+              right: compact ? 20 : 30,
+              child: Container(
+                width: 30,
+                height: 42,
+                decoration: const BoxDecoration(
+                  color: AppColors.yellow,
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(3),
+                  ),
                 ),
-              )
-            : bubble,
+                padding: const EdgeInsets.all(3),
+                child: Image.asset(
+                  'assets/brand/dardito_tres_cuartos_green_transparent.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 }
 
 class _TypingBubble extends StatelessWidget {
-  const _TypingBubble();
+  const _TypingBubble({required this.palette});
+  final _ReadingPalette palette;
   @override
   Widget build(BuildContext context) => Align(
     alignment: Alignment.centerLeft,
@@ -652,20 +1030,17 @@ class _TypingBubble extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _DarditoFace(size: 34, circular: true),
+          const _DarditoFace(size: 34),
           const SizedBox(width: 9),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             decoration: BoxDecoration(
-              color: AppColors.cream,
-              borderRadius: BorderRadius.circular(18),
+              color: palette.inset,
+              borderRadius: BorderRadius.circular(6),
             ),
-            child: const Text(
+            child: Text(
               'Dardito está buscando…',
-              style: TextStyle(
-                color: AppColors.muted,
-                fontStyle: FontStyle.italic,
-              ),
+              style: TextStyle(color: palette.ink, fontStyle: FontStyle.italic),
             ),
           ),
         ],
@@ -675,30 +1050,29 @@ class _TypingBubble extends StatelessWidget {
 }
 
 class _DarditoFace extends StatelessWidget {
-  const _DarditoFace({required this.size, this.circular = false});
+  const _DarditoFace({required this.size});
   final double size;
-  final bool circular;
 
   @override
   Widget build(BuildContext context) {
-    final portrait = SizedBox.square(
-      dimension: size,
-      child: ClipRect(
-        child: Transform.scale(
-          scale: 2.15,
-          child: Image.asset(
-            'assets/brand/dardito_waving.png',
-            fit: BoxFit.cover,
-            alignment: const Alignment(0, -.22),
-            filterQuality: FilterQuality.high,
+    final portrait = ClipOval(
+      child: ColoredBox(
+        color: Colors.white,
+        child: SizedBox.square(
+          dimension: size,
+          child: Padding(
+            padding: EdgeInsets.all(size * .035),
+            child: Image.asset(
+              'assets/brand/dardito_tres_cuartos_green_transparent.png',
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
+              filterQuality: FilterQuality.high,
+            ),
           ),
         ),
       ),
     );
-    if (!circular) return portrait;
-    return ClipOval(
-      child: ColoredBox(color: AppColors.cream, child: portrait),
-    );
+    return portrait;
   }
 }
 
@@ -707,34 +1081,99 @@ class _Composer extends StatelessWidget {
     required this.controller,
     required this.enabled,
     required this.onSend,
+    required this.palette,
   });
   final TextEditingController controller;
   final bool enabled;
   final VoidCallback onSend;
+  final _ReadingPalette palette;
   @override
   Widget build(BuildContext context) => SafeArea(
     top: false,
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+    child: Container(
+      decoration: BoxDecoration(
+        color: palette.canvas,
+        border: Border(top: BorderSide(color: palette.line)),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
-            child: TextField(
-              controller: controller,
-              enabled: enabled,
-              minLines: 1,
-              maxLines: 4,
-              keyboardType: TextInputType.multiline,
-              textInputAction: TextInputAction.newline,
-              scrollPhysics: const ClampingScrollPhysics(),
-              decoration: const InputDecoration(
-                hintText: 'Preguntá por un lugar, barrio o época…',
+            child: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, value, _) => LayoutBuilder(
+                builder: (context, constraints) {
+                  final style = Theme.of(context).textTheme.bodyLarge!;
+                  final painter =
+                      TextPainter(
+                        text: TextSpan(
+                          text: value.text.isEmpty ? ' ' : value.text,
+                          style: style,
+                        ),
+                        textDirection: Directionality.of(context),
+                        textScaler: MediaQuery.textScalerOf(context),
+                      )..layout(
+                        maxWidth: (constraints.maxWidth - 36).clamp(
+                          1,
+                          double.infinity,
+                        ),
+                      );
+                  final overflow = painter.computeLineMetrics().length > 2;
+                  painter.dispose();
+                  final desktop = {
+                    TargetPlatform.macOS,
+                    TargetPlatform.windows,
+                    TargetPlatform.linux,
+                  }.contains(defaultTargetPlatform);
+                  return Focus(
+                    onKeyEvent: (node, event) {
+                      if (desktop &&
+                          event.logicalKey == LogicalKeyboardKey.enter &&
+                          !HardwareKeyboard.instance.isShiftPressed &&
+                          value.composing.isCollapsed) {
+                        if (event is KeyDownEvent && enabled) onSend();
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: TextField(
+                      controller: controller,
+                      enabled: enabled,
+                      style: style,
+                      minLines: 1,
+                      maxLines: null,
+                      maxLength: 350,
+                      maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      scrollPhysics: const ClampingScrollPhysics(),
+                      decoration: InputDecoration(
+                        constraints: BoxConstraints(
+                          maxHeight:
+                              MediaQuery.textScalerOf(
+                                    context,
+                                  ).scale(style.fontSize ?? 16) *
+                                  (style.height ?? 1.5) *
+                                  (overflow ? 1 : 2) +
+                              36 +
+                              (value.text.characters.length >= 300 ? 28 : 0),
+                        ),
+                        hintText: 'Preguntale a Dardito…',
+                        fillColor: AppColors.paper,
+                        counterText: value.text.characters.length >= 300
+                            ? '${value.text.characters.length}/350'
+                            : '',
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
           const SizedBox(width: 10),
           IconButton.filled(
+            tooltip: 'Enviar pregunta',
             onPressed: enabled ? onSend : null,
             style: IconButton.styleFrom(
               backgroundColor: AppColors.yellow,

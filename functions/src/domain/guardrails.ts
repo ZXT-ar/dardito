@@ -29,15 +29,15 @@ const socialMessages = [
 ];
 
 const randomStoryPatterns = [
-  /\bhistoria al azar\b/,
-  /\bcontame (algo|una historia)\b/,
-  /\bsorprendeme\b/,
-  /\bcualquier historia\b/,
+  /^(quiero |quisiera )?(una|alguna|otra|cualquier) historia( al azar| cualquiera)?$/,
+  /^historia al azar$/,
+  /^(contame|contanos|conta|relatame|me contas|podes contarme|me podes contar) (algo|(una|alguna|otra|cualquier) historia)( al azar| cualquiera)?$/,
+  /^sorprendeme$/,
 ];
 
 const contextualFollowUpPatterns = [
-  /^(contame|decime|explicame|seguí|segui)\s+(mas|un poco mas|algo mas)(\s.*)?$/,
-  /^(y despues|que paso despues|como siguio|donde queda|de que epoca es)(\s.*)?$/,
+  /^(contame|decime|explicame|segui)\s+(mas|un poco mas|algo mas)$/,
+  /^(y despues|que paso despues|como siguio|donde queda|de que epoca es)( exactamente)?$/,
   /\b(esa historia|ese lugar|ese misterio|ese barrio|lo anterior)\b/,
 ];
 
@@ -53,14 +53,6 @@ const abusivePatterns = [
   /\b(boludo|pelotudo|idiota|imbecil|estupido|forro)\b/,
   /\b(mierda|carajo|puta|puto|concha)\b/,
   /\b(odio|matar|lastimar)\b.*\b(vos|te|alguien|persona)\b/,
-];
-
-const darditoDomainPatterns = [
-  /\b(la plata|platense|historia|historias|misterio|misterios|leyenda|leyendas)\b/,
-  /\b(barrio|barrios|turismo|turistico|cultura|arquitectura|memoria|fundacion)\b/,
-  /\b(diagonal|diagonales|plaza|catedral|tunel|tuneles|ferrocarril|bosque)\b/,
-  /\b(tolosa|gonnet|city bell|meridiano|casco urbano|plaza moreno|dardo rocha)\b/,
-  /\b(1882|pedro benoit|republica de los niños)\b/,
 ];
 
 function matchesAny(value: string, patterns: RegExp[]): boolean {
@@ -90,23 +82,25 @@ export function decideInteraction(message: string, hasHistory: boolean): Interac
     };
   }
 
-  if (matchesAny(value, randomStoryPatterns)) {
-    return {corpusMode: "random"};
-  }
-
   if (matchesAny(value, socialMessages)) {
     return {corpusMode: "none"};
   }
 
-  if (matchesAny(value, darditoDomainPatterns)) {
-    return {corpusMode: "search"};
+  // Only a complete, generic request should choose a story at random.
+  // A request with a subject ("contame una historia sobre...") must search it.
+  const storyRequest = value
+    .replace(/^(hola |buenas |dale |che |dardito |por favor |porfa )+/, "")
+    .replace(/( por favor| porfa| dardito)+$/, "");
+  if (matchesAny(storyRequest, randomStoryPatterns)) {
+    return {corpusMode: "random"};
   }
 
-  if (hasHistory && matchesAny(value, contextualFollowUpPatterns)) {
+  if (hasHistory && matchesAny(storyRequest, contextualFollowUpPatterns)) {
     return {corpusMode: "search", useHistoryForSearch: true};
   }
 
-  // Las conversaciones sociales y los desvíos de tema también pasan por el LLM.
-  // El system prompt conserva la identidad y decide cómo redirigir con naturalidad.
-  return {corpusMode: "none"};
+  // Published titles need not contain a fixed list of domain words. Let the
+  // corpus relevance filter decide whether there is information for the query.
+  // With no match, the LLM still receives an empty corpus and the editorial rules.
+  return {corpusMode: "search"};
 }

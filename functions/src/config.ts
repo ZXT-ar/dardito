@@ -9,7 +9,10 @@ export const geminiModel = defineString("GEMINI_MODEL", {
 export const allowedOrigins = defineString("ALLOWED_ORIGINS", {
   default:
     "http://localhost:4174,http://127.0.0.1:4174," +
-    "https://dardito-742d2.web.app,https://dardito-742d2.firebaseapp.com",
+    "http://localhost:4190,http://127.0.0.1:4190," +
+    "https://dardito-742d2.web.app,https://dardito-742d2.firebaseapp.com," +
+    "https://chocolate-chimpanzee-899948.hostingersite.com," +
+    "https://darditohistoriasplatenses.com,https://www.darditohistoriasplatenses.com",
 });
 
 export const region = "southamerica-east1";

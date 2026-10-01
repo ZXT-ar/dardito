@@ -86,10 +86,20 @@ class _BootstrapLoader extends StatelessWidget {
   const _BootstrapLoader();
 
   @override
-  Widget build(BuildContext context) => const Column(
+  Widget build(BuildContext context) => Column(
     mainAxisSize: MainAxisSize.min,
     children: [
-      SizedBox(
+      ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.asset(
+          'assets/brand/mhdlp_logo_horizontal.jpg',
+          width: 260,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+        ),
+      ),
+      const SizedBox(height: 24),
+      const SizedBox(
         width: 34,
         height: 34,
         child: CircularProgressIndicator(
@@ -97,18 +107,8 @@ class _BootstrapLoader extends StatelessWidget {
           color: Color(0xFFF4B900),
         ),
       ),
-      SizedBox(height: 20),
-      Text(
-        'DARDITO',
-        style: TextStyle(
-          color: Color(0xFFF4B900),
-          fontSize: 24,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1.5,
-        ),
-      ),
-      SizedBox(height: 6),
-      Text(
+      const SizedBox(height: 18),
+      const Text(
         'Abriendo el mapa de historias…',
         style: TextStyle(color: Color(0xFFF5F0E7), fontSize: 15),
       ),
@@ -125,14 +125,19 @@ class _BootstrapError extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     mainAxisSize: MainAxisSize.min,
     children: [
-      const Icon(
-        Icons.menu_book_rounded,
-        color: Color(0xFFF4B900),
-        size: 48,
+      ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Image.asset(
+          'assets/brand/mhdlp_pictogram.png',
+          width: 76,
+          height: 76,
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.high,
+        ),
       ),
       const SizedBox(height: 18),
       const Text(
-        'No pudimos abrir Dardito',
+        'No pudimos abrir El Mapa de las Historias de La Plata',
         textAlign: TextAlign.center,
         style: TextStyle(
           color: Color(0xFFF5F0E7),

@@ -3,49 +3,131 @@ import 'package:flutter/services.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/ui.dart';
+import '../../core/analytics/usage_analytics_service.dart';
 import '../../data/models/story.dart';
-import '../../data/repositories/story_repository.dart';
+import '../../data/catalogs/story_catalog.dart';
 import '../story/story_widgets.dart';
 import 'map/dardito_map_surface.dart';
+
+String _normalizeSearch(String value) => value
+    .toLowerCase()
+    .replaceAll(RegExp('[áàäâ]'), 'a')
+    .replaceAll(RegExp('[éèëê]'), 'e')
+    .replaceAll(RegExp('[íìïî]'), 'i')
+    .replaceAll(RegExp('[óòöô]'), 'o')
+    .replaceAll(RegExp('[úùüû]'), 'u')
+    .replaceAll('ñ', 'n')
+    .trim();
+
+int _periodSortKey(String period) =>
+    int.tryParse(RegExp(r'\d{4}').firstMatch(period)?.group(0) ?? '') ?? 9999;
+
+String _categoryLabel(String id) => switch (id) {
+  'architecture' => 'Arquitectura',
+  'mystery' => 'Misterios',
+  'culture' => 'Cultura',
+  'memory' => 'Tradición oral',
+  _ => StoryCatalog.resolve(id, id).label,
+};
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({
     super.key,
     required this.stories,
     required this.onAskDardito,
+    this.catalogNeighborhoods,
     this.initiallySelected,
+    this.initialCategory,
   });
   final List<CityStory> stories;
   final CityStory? initiallySelected;
-  final VoidCallback onAskDardito;
+  final String? initialCategory;
+  final ValueChanged<CityStory> onAskDardito;
+  final Set<String>? catalogNeighborhoods;
 
   @override
   State<ExplorePage> createState() => _ExplorePageState();
 }
 
 class _ExplorePageState extends State<ExplorePage> {
+  static const _gridPageSize = 15;
+
   String? _category;
   String? _neighborhood;
+  String? _period;
+  String _searchQuery = '';
+  int _gridPage = 0;
   CityStory? _selected;
   bool _mapMode = true;
   bool _filtersExpanded = false;
   bool _desktopFiltersExpanded = false;
-  String? _mapStyle;
+  String? _darkMapStyle;
+  String? _lightMapStyle;
+  bool _lightMapEnabled = false;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _selected = widget.initiallySelected;
-    rootBundle.loadString('assets/map/la_plata_map_style.json').then((style) {
-      if (mounted) setState(() => _mapStyle = style);
+    _category = widget.initialCategory;
+    _filtersExpanded = _category != null;
+    _desktopFiltersExpanded = _category != null;
+    Future.wait([
+      rootBundle.loadString('assets/map/la_plata_map_style.json'),
+      rootBundle.loadString('assets/map/la_plata_map_style_light.json'),
+    ]).then((styles) {
+      if (!mounted) return;
+      setState(() {
+        _darkMapStyle = styles[0];
+        _lightMapStyle = styles[1];
+      });
     });
   }
 
-  List<CityStory> get _filtered => widget.stories.where((story) {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<CityStory> get _mapFiltered => widget.stories.where((story) {
     return (_category == null || story.category.id == _category) &&
-        (_neighborhood == null || story.neighborhood == _neighborhood);
+        (_neighborhood == null || story.neighborhood == _neighborhood) &&
+        (_period == null || story.period == _period);
   }).toList();
+
+  List<CityStory> get _gridFiltered {
+    final normalizedQuery = _normalizeSearch(_searchQuery);
+    return _mapFiltered.where((story) {
+      if (normalizedQuery.isEmpty) return true;
+      final searchable = _normalizeSearch(
+        [
+          story.title,
+          story.subtitle,
+          story.shortStory,
+          story.neighborhood,
+          story.category.label,
+          story.period,
+          story.evidenceLabel,
+        ].join(' '),
+      );
+      return searchable.contains(normalizedQuery);
+    }).toList();
+  }
+
+  List<String> get _availablePeriods {
+    final periods = widget.stories
+        .map((story) => story.period.trim())
+        .where((period) => period.isNotEmpty)
+        .toSet()
+        .toList();
+    periods.sort((a, b) {
+      final byYear = _periodSortKey(a).compareTo(_periodSortKey(b));
+      return byYear != 0 ? byYear : a.compareTo(b);
+    });
+    return periods;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,18 +138,15 @@ class _ExplorePageState extends State<ExplorePage> {
     final filtersExpanded = wideDesktop
         ? _desktopFiltersExpanded
         : _filtersExpanded;
+    final visibleStories = _mapMode ? _mapFiltered : _gridFiltered;
     final activeFilters = [
       _category != null,
       _neighborhood != null,
+      _period != null,
     ].where((active) => active).length;
     final controlsTop = desktop ? 104.0 : 14.0;
     final contentInset =
-        controlsTop +
-        (wideDesktop
-            ? (filtersExpanded ? 248.0 : 76.0)
-            : filtersExpanded
-            ? (narrow ? 216.0 : 110.0)
-            : (narrow ? 126.0 : 92.0));
+        controlsTop + (wideDesktop ? 76.0 : (narrow ? 126.0 : 92.0));
 
     return ColoredBox(
       color: AppColors.navy,
@@ -80,10 +159,13 @@ class _ExplorePageState extends State<ExplorePage> {
               child: _mapMode
                   ? _MapView(
                       key: const ValueKey('map'),
-                      stories: _filtered,
+                      stories: _mapFiltered,
                       selected: _selected,
                       topInset: contentInset,
-                      style: _mapStyle,
+                      style: _lightMapEnabled ? _lightMapStyle : _darkMapStyle,
+                      lightMapEnabled: _lightMapEnabled,
+                      onToggleMapTheme: () =>
+                          setState(() => _lightMapEnabled = !_lightMapEnabled),
                       onSelect: (s) => setState(() => _selected = s),
                       onClose: () => setState(() => _selected = null),
                       onDetails: (s) => showStoryDetails(context, s),
@@ -91,8 +173,19 @@ class _ExplorePageState extends State<ExplorePage> {
                     )
                   : _GridView(
                       key: const ValueKey('grid'),
-                      stories: _filtered,
+                      stories: _gridFiltered,
                       topInset: contentInset,
+                      searchController: _searchController,
+                      searchQuery: _searchQuery,
+                      currentPage: _gridPage,
+                      pageSize: _gridPageSize,
+                      onSearchChanged: (value) => setState(() {
+                        _searchQuery = value;
+                        _gridPage = 0;
+                      }),
+                      onPageChanged: (value) =>
+                          setState(() => _gridPage = value),
+                      onClear: _clearAllFilters,
                     ),
             ),
           ),
@@ -111,12 +204,16 @@ class _ExplorePageState extends State<ExplorePage> {
                     expanded: filtersExpanded,
                     mapMode: _mapMode,
                     activeFilters: activeFilters,
-                    resultCount: _filtered.length,
+                    resultCount: visibleStories.length,
                     category: _category,
                     neighborhood: _neighborhood,
-                    neighborhoods: widget.stories
-                        .map((story) => story.neighborhood)
-                        .toSet(),
+                    period: _period,
+                    periods: _availablePeriods,
+                    neighborhoods:
+                        widget.catalogNeighborhoods ??
+                        widget.stories
+                            .map((story) => story.neighborhood)
+                            .toSet(),
                     onToggleFilters: () => setState(() {
                       if (wideDesktop) {
                         _desktopFiltersExpanded = !_desktopFiltersExpanded;
@@ -124,15 +221,23 @@ class _ExplorePageState extends State<ExplorePage> {
                         _filtersExpanded = !_filtersExpanded;
                       }
                     }),
-                    onModeChanged: (value) => setState(() => _mapMode = value),
-                    onCategoryChanged: (value) =>
-                        setState(() => _category = value),
-                    onNeighborhoodChanged: (value) =>
-                        setState(() => _neighborhood = value),
-                    onClear: () => setState(() {
-                      _category = null;
-                      _neighborhood = null;
+                    onModeChanged: (value) => setState(() {
+                      _mapMode = value;
+                      if (!value) _gridPage = 0;
                     }),
+                    onCategoryChanged: (value) => setState(() {
+                      _category = value;
+                      _gridPage = 0;
+                    }),
+                    onNeighborhoodChanged: (value) => setState(() {
+                      _neighborhood = value;
+                      _gridPage = 0;
+                    }),
+                    onPeriodChanged: (value) => setState(() {
+                      _period = value;
+                      _gridPage = 0;
+                    }),
+                    onClear: _clearAllFilters,
                   ),
                 ),
               ),
@@ -141,6 +246,17 @@ class _ExplorePageState extends State<ExplorePage> {
         ],
       ),
     );
+  }
+
+  void _clearAllFilters() {
+    setState(() {
+      _category = null;
+      _neighborhood = null;
+      _period = null;
+      _searchQuery = '';
+      _gridPage = 0;
+      _searchController.clear();
+    });
   }
 }
 
@@ -154,11 +270,14 @@ class _ExploreControls extends StatelessWidget {
     required this.resultCount,
     required this.category,
     required this.neighborhood,
+    required this.period,
+    required this.periods,
     required this.neighborhoods,
     required this.onToggleFilters,
     required this.onModeChanged,
     required this.onCategoryChanged,
     required this.onNeighborhoodChanged,
+    required this.onPeriodChanged,
     required this.onClear,
   });
 
@@ -170,11 +289,14 @@ class _ExploreControls extends StatelessWidget {
   final int resultCount;
   final String? category;
   final String? neighborhood;
+  final String? period;
+  final List<String> periods;
   final Set<String> neighborhoods;
   final VoidCallback onToggleFilters;
   final ValueChanged<bool> onModeChanged;
   final ValueChanged<String?> onCategoryChanged;
   final ValueChanged<String?> onNeighborhoodChanged;
+  final ValueChanged<String?> onPeriodChanged;
   final VoidCallback onClear;
 
   @override
@@ -187,11 +309,14 @@ class _ExploreControls extends StatelessWidget {
         resultCount: resultCount,
         category: category,
         neighborhood: neighborhood,
+        period: period,
+        periods: periods,
         neighborhoods: neighborhoods,
         onToggleFilters: onToggleFilters,
         onModeChanged: onModeChanged,
         onCategoryChanged: onCategoryChanged,
         onNeighborhoodChanged: onNeighborhoodChanged,
+        onPeriodChanged: onPeriodChanged,
         onClear: onClear,
       );
     }
@@ -273,6 +398,7 @@ class _ExploreControls extends StatelessWidget {
               children: [
                 Expanded(
                   child: _FiltersControl(
+                    compact: true,
                     expanded: expanded,
                     activeFilters: activeFilters,
                     onTap: onToggleFilters,
@@ -301,17 +427,17 @@ class _ExploreControls extends StatelessWidget {
                             child: _FilterMenu(
                               label: category == null
                                   ? 'Todas las categorías'
-                                  : LocalStoryRepository.categories
-                                        .firstWhere(
-                                          (item) => item.id == category,
-                                        )
-                                        .label,
+                                  : _categoryLabel(category!),
                               icon: Icons.category_outlined,
                               options: {
                                 'Todas': null,
-                                for (final item
-                                    in LocalStoryRepository.categories)
-                                  item.label: item.id,
+                                for (final item in StoryCatalog.categories)
+                                  _categoryLabel(item.id): item.id,
+                              },
+                              descriptions: {
+                                for (final item in StoryCatalog.categories)
+                                  item.id:
+                                      item.description ?? 'Sin descripción',
                               },
                               value: category,
                               onSelected: onCategoryChanged,
@@ -328,6 +454,19 @@ class _ExploreControls extends StatelessWidget {
                               },
                               value: neighborhood,
                               onSelected: onNeighborhoodChanged,
+                            ),
+                          ),
+                          SizedBox(
+                            width: narrow ? double.infinity : null,
+                            child: _FilterMenu(
+                              label: period ?? 'Todos los períodos',
+                              icon: Icons.calendar_month_outlined,
+                              options: {
+                                'Todos los períodos': null,
+                                for (final item in periods) item: item,
+                              },
+                              value: period,
+                              onSelected: onPeriodChanged,
                             ),
                           ),
                           if (!narrow) _ResultCount(resultCount: resultCount),
@@ -360,11 +499,14 @@ class _DesktopExploreControls extends StatelessWidget {
     required this.resultCount,
     required this.category,
     required this.neighborhood,
+    required this.period,
+    required this.periods,
     required this.neighborhoods,
     required this.onToggleFilters,
     required this.onModeChanged,
     required this.onCategoryChanged,
     required this.onNeighborhoodChanged,
+    required this.onPeriodChanged,
     required this.onClear,
   });
 
@@ -374,11 +516,14 @@ class _DesktopExploreControls extends StatelessWidget {
   final int resultCount;
   final String? category;
   final String? neighborhood;
+  final String? period;
+  final List<String> periods;
   final Set<String> neighborhoods;
   final VoidCallback onToggleFilters;
   final ValueChanged<bool> onModeChanged;
   final ValueChanged<String?> onCategoryChanged;
   final ValueChanged<String?> onNeighborhoodChanged;
+  final ValueChanged<String?> onPeriodChanged;
   final VoidCallback onClear;
 
   @override
@@ -387,17 +532,17 @@ class _DesktopExploreControls extends StatelessWidget {
     curve: Curves.easeOutCubic,
     alignment: Alignment.topRight,
     child: Container(
-      width: expanded ? 440 : null,
-      padding: const EdgeInsets.all(10),
+      width: 440,
+      padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
         color: AppColors.navy.withValues(alpha: .91),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withValues(alpha: .14)),
         boxShadow: const [
           BoxShadow(
             color: Colors.black38,
-            blurRadius: 28,
-            offset: Offset(0, 12),
+            blurRadius: 20,
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -406,15 +551,21 @@ class _DesktopExploreControls extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
+              _ResultCount(resultCount: resultCount),
+              const Spacer(),
               _FiltersControl(
                 expanded: expanded,
                 activeFilters: activeFilters,
                 onTap: onToggleFilters,
+                compact: true,
               ),
-              const SizedBox(width: 8),
-              _ModeToggle(value: mapMode, onChanged: onModeChanged),
+              const SizedBox(width: 6),
+              _ModeToggle(
+                value: mapMode,
+                onChanged: onModeChanged,
+                compact: true,
+              ),
             ],
           ),
           if (expanded) ...[
@@ -422,14 +573,16 @@ class _DesktopExploreControls extends StatelessWidget {
             _FilterMenu(
               label: category == null
                   ? 'Todas las categorías'
-                  : LocalStoryRepository.categories
-                        .firstWhere((item) => item.id == category)
-                        .label,
+                  : _categoryLabel(category!),
               icon: Icons.category_outlined,
               options: {
                 'Todas': null,
-                for (final item in LocalStoryRepository.categories)
-                  item.label: item.id,
+                for (final item in StoryCatalog.categories)
+                  _categoryLabel(item.id): item.id,
+              },
+              descriptions: {
+                for (final item in StoryCatalog.categories)
+                  item.id: item.description ?? 'Sin descripción',
               },
               value: category,
               onSelected: onCategoryChanged,
@@ -446,9 +599,19 @@ class _DesktopExploreControls extends StatelessWidget {
               onSelected: onNeighborhoodChanged,
             ),
             const SizedBox(height: 8),
+            _FilterMenu(
+              label: period ?? 'Todos los períodos',
+              icon: Icons.calendar_month_outlined,
+              options: {
+                'Todos los períodos': null,
+                for (final item in periods) item: item,
+              },
+              value: period,
+              onSelected: onPeriodChanged,
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
-                _ResultCount(resultCount: resultCount),
                 const Spacer(),
                 if (activeFilters > 0)
                   TextButton.icon(
@@ -473,39 +636,51 @@ class _FiltersControl extends StatelessWidget {
     required this.expanded,
     required this.activeFilters,
     required this.onTap,
+    this.compact = false,
   });
 
   final bool expanded;
   final int activeFilters;
   final VoidCallback onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) => _RoundControl(
     tooltip: expanded ? 'Ocultar filtros' : 'Mostrar filtros',
     onTap: onTap,
+    compact: compact,
     child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.tune_rounded, size: 19),
-        const SizedBox(width: 7),
-        const Text('Filtros'),
+        Icon(Icons.tune_rounded, size: compact ? 15 : 19),
+        SizedBox(width: compact ? 5 : 7),
+        Text('Filtros', style: compact ? const TextStyle(fontSize: 12) : null),
         if (activeFilters > 0) ...[
-          const SizedBox(width: 7),
+          SizedBox(width: compact ? 5 : 7),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 5 : 7,
+              vertical: compact ? 1 : 2,
+            ),
             decoration: BoxDecoration(
               color: AppColors.yellow,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text('$activeFilters'),
+            child: Text(
+              '$activeFilters',
+              style: compact ? const TextStyle(fontSize: 11) : null,
+            ),
           ),
         ],
-        const SizedBox(width: 3),
+        SizedBox(width: compact ? 2 : 3),
         AnimatedRotation(
           turns: expanded ? .5 : 0,
           duration: const Duration(milliseconds: 300),
-          child: const Icon(Icons.keyboard_arrow_down_rounded),
+          child: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: compact ? 18 : 24,
+          ),
         ),
       ],
     ),
@@ -541,22 +716,27 @@ class _RoundControl extends StatelessWidget {
     required this.tooltip,
     required this.onTap,
     required this.child,
+    this.compact = false,
   });
   final String tooltip;
   final VoidCallback onTap;
   final Widget child;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) => Tooltip(
     message: tooltip,
     child: Material(
       color: AppColors.paper,
-      borderRadius: BorderRadius.circular(15),
+      borderRadius: BorderRadius.circular(compact ? 11 : 15),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(compact ? 11 : 15),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 8 : 12,
+            vertical: compact ? 7 : 11,
+          ),
           child: DefaultTextStyle.merge(
             style: const TextStyle(fontWeight: FontWeight.w800),
             child: child,
@@ -568,16 +748,21 @@ class _RoundControl extends StatelessWidget {
 }
 
 class _ModeToggle extends StatelessWidget {
-  const _ModeToggle({required this.value, required this.onChanged});
+  const _ModeToggle({
+    required this.value,
+    required this.onChanged,
+    this.compact = false,
+  });
   final bool value;
   final ValueChanged<bool> onChanged;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(3),
+    padding: EdgeInsets.all(compact ? 2 : 3),
     decoration: BoxDecoration(
       color: AppColors.paper,
-      borderRadius: BorderRadius.circular(15),
+      borderRadius: BorderRadius.circular(compact ? 11 : 15),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -587,12 +772,14 @@ class _ModeToggle extends StatelessWidget {
           selected: value,
           tooltip: 'Vista mapa',
           onTap: () => onChanged(true),
+          compact: compact,
         ),
         _ModeButton(
           icon: Icons.grid_view_rounded,
           selected: !value,
           tooltip: 'Vista grilla',
           onTap: () => onChanged(false),
+          compact: compact,
         ),
       ],
     ),
@@ -605,26 +792,28 @@ class _ModeButton extends StatelessWidget {
     required this.selected,
     required this.tooltip,
     required this.onTap,
+    this.compact = false,
   });
   final IconData icon;
   final bool selected;
   final String tooltip;
   final VoidCallback onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) => Tooltip(
     message: tooltip,
     child: InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(compact ? 8 : 12),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
-        padding: const EdgeInsets.all(9),
+        padding: EdgeInsets.all(compact ? 6 : 9),
         decoration: BoxDecoration(
           color: selected ? AppColors.yellow : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(compact ? 8 : 12),
         ),
-        child: Icon(icon, size: 19),
+        child: Icon(icon, size: compact ? 15 : 19),
       ),
     ),
   );
@@ -637,12 +826,14 @@ class _FilterMenu extends StatelessWidget {
     required this.options,
     required this.value,
     required this.onSelected,
+    this.descriptions = const {},
   });
   final String label;
   final IconData icon;
   final Map<String, String?> options;
   final String? value;
   final ValueChanged<String?> onSelected;
+  final Map<String, String> descriptions;
 
   @override
   Widget build(BuildContext context) => MenuAnchor(
@@ -694,6 +885,20 @@ class _FilterMenu extends StatelessWidget {
                 ),
               ),
             ),
+            if (entry.value != null &&
+                descriptions.containsKey(entry.value)) ...[
+              const SizedBox(width: 6),
+              Tooltip(
+                message: descriptions[entry.value]!,
+                triggerMode: TooltipTriggerMode.tap,
+                showDuration: const Duration(seconds: 5),
+                child: const SizedBox(
+                  width: 30,
+                  height: 30,
+                  child: Icon(Icons.info_outline_rounded, size: 17),
+                ),
+              ),
+            ],
             if (selected) ...[
               const SizedBox(width: 12),
               const Icon(Icons.check_rounded, size: 18),
@@ -748,6 +953,8 @@ class _MapView extends StatefulWidget {
     required this.selected,
     required this.topInset,
     required this.style,
+    required this.lightMapEnabled,
+    required this.onToggleMapTheme,
     required this.onSelect,
     required this.onClose,
     required this.onDetails,
@@ -757,10 +964,12 @@ class _MapView extends StatefulWidget {
   final CityStory? selected;
   final double topInset;
   final String? style;
+  final bool lightMapEnabled;
+  final VoidCallback onToggleMapTheme;
   final ValueChanged<CityStory> onSelect;
   final VoidCallback onClose;
   final ValueChanged<CityStory> onDetails;
-  final VoidCallback onAsk;
+  final ValueChanged<CityStory> onAsk;
 
   @override
   State<_MapView> createState() => _MapViewState();
@@ -770,10 +979,100 @@ class _MapViewState extends State<_MapView> {
   DarditoMapController? _controller;
 
   void _selectStory(CityStory story) {
+    UsageAnalyticsService.instance.storyViewed(story);
     widget.onSelect(story);
     if (MediaQuery.sizeOf(context).width < 760) {
       _showMobilePreview(context, story);
     }
+  }
+
+  Future<void> _showCluster(List<CityStory> stories) async {
+    final sorted = [...stories]..sort((a, b) => a.title.compareTo(b.title));
+    final selected = await showModalBottomSheet<CityStory>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.paper,
+      constraints: const BoxConstraints(maxWidth: 640),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => PointerInterceptor(
+        child: SafeArea(
+          child: SizedBox(
+            height: MediaQuery.sizeOf(sheetContext).height * .65,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 12, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${stories.length} historias en esta zona',
+                              style: Theme.of(
+                                sheetContext,
+                              ).textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: 6),
+                            const Text('Elegí una para descubrir su historia.'),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Cerrar historias de la zona',
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                    itemCount: sorted.length,
+                    separatorBuilder: (_, index) => const Divider(height: 1),
+                    itemBuilder: (_, index) {
+                      final story = sorted[index];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        leading: CircleAvatar(
+                          backgroundColor: story.category.color.withValues(
+                            alpha: .12,
+                          ),
+                          child: Icon(
+                            story.category.icon,
+                            color: story.category.color,
+                          ),
+                        ),
+                        title: Text(
+                          story.title,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: Text(
+                          '${_categoryLabel(story.category.id)} · ${story.neighborhood}\n${story.shortStory}',
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_rounded),
+                        onTap: () => Navigator.pop(sheetContext, story),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (mounted && selected != null) _selectStory(selected);
   }
 
   @override
@@ -788,30 +1087,13 @@ class _MapViewState extends State<_MapView> {
               stories: widget.stories,
               selected: widget.selected,
               style: widget.style,
+              lightTheme: widget.lightMapEnabled,
               onSelect: _selectStory,
+              onCluster: _showCluster,
               onReady: (controller) => _controller = controller,
               bottomPadding: showPanel ? 12 : 112,
               rightPadding: showPanel && widget.selected != null ? 410 : 0,
               interactive: !lockMapForStory,
-            ),
-          ),
-          Positioned(
-            left: 20,
-            top: widget.topInset + 12,
-            child: TrustBadge(
-              icon: Icons.circle,
-              label: '${widget.stories.length} historias visibles',
-              color: AppColors.green,
-            ),
-          ),
-          Positioned(
-            left: 20,
-            bottom: showPanel ? 20 : 116,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: widget.selected == null && showPanel
-                  ? const _MapHint(key: ValueKey('map-hint'))
-                  : const SizedBox.shrink(key: ValueKey('map-hint-hidden')),
             ),
           ),
           AnimatedPositioned(
@@ -822,6 +1104,29 @@ class _MapViewState extends State<_MapView> {
             child: PointerInterceptor(
               child: Column(
                 children: [
+                  FloatingActionButton.small(
+                    heroTag: 'map-theme',
+                    tooltip: widget.lightMapEnabled
+                        ? 'Usar mapa oscuro'
+                        : 'Usar mapa claro',
+                    onPressed: widget.onToggleMapTheme,
+                    backgroundColor: widget.lightMapEnabled
+                        ? AppColors.ink
+                        : AppColors.paper,
+                    foregroundColor: widget.lightMapEnabled
+                        ? AppColors.paper
+                        : AppColors.ink,
+                    child: Icon(
+                      widget.lightMapEnabled
+                          ? Icons.dark_mode_rounded
+                          : Icons.light_mode_rounded,
+                      size: 22,
+                      color: widget.lightMapEnabled
+                          ? Colors.white
+                          : AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   FloatingActionButton.small(
                     heroTag: 'plus',
                     tooltip: 'Acercar',
@@ -905,28 +1210,6 @@ class _MapViewState extends State<_MapView> {
   }
 }
 
-class _MapHint extends StatelessWidget {
-  const _MapHint({super.key});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-    decoration: BoxDecoration(
-      color: AppColors.paper.withValues(alpha: .94),
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 20)],
-    ),
-    child: const Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.touch_app_outlined, size: 19),
-        SizedBox(width: 8),
-        Text('Elegí un punto para abrir su historia'),
-      ],
-    ),
-  );
-}
-
 class _StoryPanel extends StatelessWidget {
   const _StoryPanel({
     required this.story,
@@ -937,18 +1220,15 @@ class _StoryPanel extends StatelessWidget {
   final CityStory story;
   final VoidCallback onClose;
   final ValueChanged<CityStory> onDetails;
-  final VoidCallback onAsk;
+  final ValueChanged<CityStory> onAsk;
 
-  String get evidenceLabel => switch (story.evidence) {
-    EvidenceLevel.documented => 'Historia documentada',
-    EvidenceLevel.oralTradition => 'Tradición oral',
-    EvidenceLevel.community => 'Memoria de la comunidad',
-  };
+  String get evidenceLabel => story.evidenceLabel;
 
   IconData get evidenceIcon => switch (story.evidence) {
-    EvidenceLevel.documented => Icons.verified_outlined,
-    EvidenceLevel.oralTradition => Icons.record_voice_over_outlined,
-    EvidenceLevel.community => Icons.groups_2_outlined,
+    'documented' => Icons.verified_outlined,
+    'oral_tradition' => Icons.record_voice_over_outlined,
+    'community' => Icons.groups_2_outlined,
+    _ => Icons.fact_check_outlined,
   };
 
   @override
@@ -1078,7 +1358,7 @@ class _StoryPanel extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: TextButton.icon(
-                    onPressed: onAsk,
+                    onPressed: () => onAsk(story),
                     icon: const Icon(Icons.chat_bubble_outline),
                     label: const Text('Preguntarle a Dardito'),
                   ),
@@ -1115,40 +1395,413 @@ class _StoryFact extends StatelessWidget {
   );
 }
 
-class _GridView extends StatelessWidget {
-  const _GridView({super.key, required this.stories, required this.topInset});
+class _GridView extends StatefulWidget {
+  const _GridView({
+    super.key,
+    required this.stories,
+    required this.topInset,
+    required this.searchController,
+    required this.searchQuery,
+    required this.currentPage,
+    required this.pageSize,
+    required this.onSearchChanged,
+    required this.onPageChanged,
+    required this.onClear,
+  });
+
   final List<CityStory> stories;
   final double topInset;
+  final TextEditingController searchController;
+  final String searchQuery;
+  final int currentPage;
+  final int pageSize;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<int> onPageChanged;
+  final VoidCallback onClear;
+
+  @override
+  State<_GridView> createState() => _GridViewState();
+}
+
+class _GridViewState extends State<_GridView> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _changePage(int page) {
+    widget.onPageChanged(page);
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 360),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Container(
     color: AppColors.cream,
-    child: stories.isEmpty
-        ? const Center(
-            child: Text('No encontramos historias con esos filtros.'),
-          )
-        : LayoutBuilder(
-            builder: (context, c) {
-              final cols = c.maxWidth < 650
-                  ? 1
-                  : c.maxWidth < 1000
-                  ? 2
-                  : 3;
-              final ratio = cols == 1 ? 1.8 : 1.05;
-              return GridView.builder(
-                padding: EdgeInsets.fromLTRB(24, topInset + 14, 24, 24),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: cols,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: ratio,
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final horizontalPadding = constraints.maxWidth < 600
+            ? 14.0
+            : constraints.maxWidth < 1000
+            ? 20.0
+            : 28.0;
+        final pageCount = widget.stories.isEmpty
+            ? 1
+            : (widget.stories.length + widget.pageSize - 1) ~/ widget.pageSize;
+        final safePage = widget.currentPage < pageCount
+            ? widget.currentPage
+            : pageCount - 1;
+        final start = safePage * widget.pageSize;
+        final requestedEnd = start + widget.pageSize;
+        final end = requestedEnd < widget.stories.length
+            ? requestedEnd
+            : widget.stories.length;
+        final pageStories = widget.stories.sublist(start, end);
+
+        return CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            SliverToBoxAdapter(child: SizedBox(height: widget.topInset + 14)),
+            SliverPadding(
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              sliver: SliverToBoxAdapter(
+                child: _GridSearchToolbar(
+                  controller: widget.searchController,
+                  query: widget.searchQuery,
+                  onSearchChanged: widget.onSearchChanged,
                 ),
-                itemCount: stories.length,
-                itemBuilder: (context, i) => StoryCard(
-                  story: stories[i],
-                  onTap: () => showStoryDetails(context, stories[i]),
+              ),
+            ),
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                14,
+                horizontalPadding,
+                12,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: _GridResultSummary(
+                  total: widget.stories.length,
+                  start: widget.stories.isEmpty ? 0 : start + 1,
+                  end: end,
+                  page: safePage,
+                  pageCount: pageCount,
                 ),
-              );
-            },
+              ),
+            ),
+            if (pageStories.isEmpty)
+              SliverToBoxAdapter(
+                child: _EmptyGridResult(onClear: widget.onClear),
+              )
+            else
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  0,
+                  horizontalPadding,
+                  22,
+                ),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: constraints.maxWidth < 620
+                        ? constraints.maxWidth
+                        : 390,
+                    mainAxisExtent: constraints.maxWidth < 620 ? 270 : 286,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => StoryCard(
+                      story: pageStories[index],
+                      compact: true,
+                      onTap: () =>
+                          showStoryDetails(context, pageStories[index]),
+                    ),
+                    childCount: pageStories.length,
+                  ),
+                ),
+              ),
+            if (widget.stories.isNotEmpty && pageCount > 1)
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  0,
+                  horizontalPadding,
+                  110,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: _GridPagination(
+                    page: safePage,
+                    pageCount: pageCount,
+                    onChanged: _changePage,
+                  ),
+                ),
+              )
+            else
+              const SliverToBoxAdapter(child: SizedBox(height: 110)),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+class _GridSearchToolbar extends StatelessWidget {
+  const _GridSearchToolbar({
+    required this.controller,
+    required this.query,
+    required this.onSearchChanged,
+  });
+
+  final TextEditingController controller;
+  final String query;
+  final ValueChanged<String> onSearchChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: AppColors.paper,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: AppColors.ink.withValues(alpha: .10)),
+      boxShadow: [
+        BoxShadow(
+          color: AppColors.ink.withValues(alpha: .08),
+          blurRadius: 24,
+          offset: const Offset(0, 10),
+        ),
+      ],
+    ),
+    child: _StorySearchField(
+      controller: controller,
+      query: query,
+      onChanged: onSearchChanged,
+    ),
+  );
+}
+
+class _StorySearchField extends StatelessWidget {
+  const _StorySearchField({
+    required this.controller,
+    required this.query,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String query;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 520;
+    return SizedBox(
+      height: 48,
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        textInputAction: TextInputAction.search,
+        inputFormatters: [LengthLimitingTextInputFormatter(80)],
+        decoration: InputDecoration(
+          hintText: compact
+              ? 'Buscar historias o barrios…'
+              : 'Buscar por historia, barrio o palabra clave…',
+          prefixIcon: const Icon(Icons.search_rounded, size: 21),
+          suffixIcon: query.trim().isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Limpiar búsqueda',
+                  onPressed: () {
+                    controller.clear();
+                    onChanged('');
+                  },
+                  icon: const Icon(Icons.close_rounded, size: 19),
+                ),
+          filled: true,
+          fillColor: AppColors.cream.withValues(alpha: .68),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppColors.ink.withValues(alpha: .12)),
           ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppColors.ink.withValues(alpha: .12)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.yellow, width: 2),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GridResultSummary extends StatelessWidget {
+  const _GridResultSummary({
+    required this.total,
+    required this.start,
+    required this.end,
+    required this.page,
+    required this.pageCount,
+  });
+
+  final int total;
+  final int start;
+  final int end;
+  final int page;
+  final int pageCount;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: Text(
+          total == 0
+              ? 'Sin resultados'
+              : 'Mostrando $start–$end de $total historias',
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      if (pageCount > 1)
+        Text(
+          'Página ${page + 1} de $pageCount',
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+    ],
+  );
+}
+
+class _EmptyGridResult extends StatelessWidget {
+  const _EmptyGridResult({required this.onClear});
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(24, 48, 24, 150),
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Column(
+          children: [
+            Container(
+              width: 62,
+              height: 62,
+              decoration: BoxDecoration(
+                color: AppColors.yellow.withValues(alpha: .18),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.manage_search_rounded, size: 30),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'No encontramos historias',
+              style: Theme.of(context).textTheme.headlineMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Probá con otra palabra, período o tipo de historia.',
+              style: TextStyle(color: AppColors.muted),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 18),
+            OutlinedButton.icon(
+              onPressed: onClear,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Restablecer filtros'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _GridPagination extends StatelessWidget {
+  const _GridPagination({
+    required this.page,
+    required this.pageCount,
+    required this.onChanged,
+  });
+
+  final int page;
+  final int pageCount;
+  final ValueChanged<int> onChanged;
+
+  List<int> get visiblePages {
+    var start = page - 2;
+    if (start < 0) start = 0;
+    var end = start + 5;
+    if (end > pageCount) {
+      end = pageCount;
+      start = end - 5;
+      if (start < 0) start = 0;
+    }
+    return [for (var index = start; index < end; index++) index];
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(
+      color: AppColors.paper,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: AppColors.ink.withValues(alpha: .10)),
+    ),
+    child: Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 6,
+      runSpacing: 8,
+      children: [
+        IconButton.outlined(
+          tooltip: 'Página anterior',
+          onPressed: page == 0 ? null : () => onChanged(page - 1),
+          icon: const Icon(Icons.arrow_back_rounded, size: 19),
+        ),
+        for (final item in visiblePages)
+          SizedBox(
+            width: 42,
+            height: 42,
+            child: item == page
+                ? FilledButton(
+                    onPressed: null,
+                    style: FilledButton.styleFrom(
+                      disabledBackgroundColor: AppColors.yellow,
+                      disabledForegroundColor: AppColors.ink,
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: Text('${item + 1}'),
+                  )
+                : OutlinedButton(
+                    onPressed: () => onChanged(item),
+                    style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
+                    child: Text('${item + 1}'),
+                  ),
+          ),
+        IconButton.outlined(
+          tooltip: 'Página siguiente',
+          onPressed: page >= pageCount - 1 ? null : () => onChanged(page + 1),
+          icon: const Icon(Icons.arrow_forward_rounded, size: 19),
+        ),
+      ],
+    ),
   );
 }

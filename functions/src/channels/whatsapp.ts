@@ -1,14 +1,11 @@
-import {createHmac, timingSafeEqual} from "node:crypto";
+import {randomUUID} from "node:crypto";
 import {getApps, initializeApp} from "firebase-admin/app";
-import {FieldValue, getFirestore} from "firebase-admin/firestore";
+import {FieldValue, getFirestore, Timestamp} from "firebase-admin/firestore";
 import {logger} from "firebase-functions";
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
 import {onRequest} from "firebase-functions/v2/https";
 
-import {
-  geminiApiKey,
-  region,
-} from "../config.js";
+import {geminiApiKey, region} from "../config.js";
 import {
   whatsappAccessToken,
   whatsappAppSecret,
@@ -18,118 +15,117 @@ import {
 } from "../whatsapp-config.js";
 import {answerChat} from "../services/chat.js";
 import {privacyHash} from "../services/rate-limit.js";
+import {extractWhatsAppMessages, hasValidMetaSignature, verificationChallenge} from "../domain/whatsapp.js";
+import {needsWhatsAppFormatNotice} from "../domain/whatsapp-content.js";
+import {
+  processWhatsAppJob,
+  WhatsAppDeliveryError,
+  whatsappMaximumAgeMs,
+  whatsappRetentionMs,
+  type WhatsAppJob,
+} from "../domain/whatsapp-worker.js";
 
 if (getApps().length === 0) initializeApp();
-
-function hasValidMetaSignature(rawBody: Buffer, signature: string | undefined): boolean {
-  if (!signature?.startsWith("sha256=")) return false;
-  const expected = createHmac("sha256", whatsappAppSecret.value())
-    .update(rawBody)
-    .digest("hex");
-  const received = signature.slice("sha256=".length);
-  if (received.length !== expected.length) return false;
-  return timingSafeEqual(Buffer.from(received, "hex"), Buffer.from(expected, "hex"));
-}
-
-interface WhatsAppTextMessage {
-  id: string;
-  from: string;
-  timestamp?: string;
-  type: string;
-  text?: {body?: string};
-}
-
-function extractMessages(payload: unknown): WhatsAppTextMessage[] {
-  if (!payload || typeof payload !== "object") return [];
-  const entries = (payload as {entry?: unknown[]}).entry;
-  if (!Array.isArray(entries)) return [];
-  const output: WhatsAppTextMessage[] = [];
-  for (const entry of entries) {
-    const changes = (entry as {changes?: unknown[]})?.changes;
-    if (!Array.isArray(changes)) continue;
-    for (const change of changes) {
-      const messages = (change as {value?: {messages?: unknown[]}})?.value?.messages;
-      if (!Array.isArray(messages)) continue;
-      for (const message of messages) {
-        const candidate = message as WhatsAppTextMessage;
-        if (candidate.id && candidate.from && candidate.type) output.push(candidate);
-      }
-    }
-  }
-  return output;
-}
 
 export const whatsappWebhook = onRequest(
   {
     region,
-    secrets: [whatsappVerifyToken, whatsappAppSecret],
+    secrets: [whatsappVerifyToken, whatsappAppSecret, whatsappPhoneNumberId],
     timeoutSeconds: 20,
     maxInstances: 10,
   },
   async (request, response) => {
     if (request.method === "GET") {
-      const mode = request.query["hub.mode"];
-      const token = request.query["hub.verify_token"];
-      const challenge = request.query["hub.challenge"];
-      if (mode === "subscribe" && token === whatsappVerifyToken.value() && typeof challenge === "string") {
-        response.status(200).send(challenge);
-      } else {
-        response.sendStatus(403);
-      }
+      const challenge = verificationChallenge(request.query, whatsappVerifyToken.value());
+      if (challenge !== null) response.status(200).type("text/plain").send(challenge);
+      else response.sendStatus(403);
       return;
     }
     if (request.method !== "POST") {
       response.sendStatus(405);
       return;
     }
-    const signature = request.header("x-hub-signature-256");
-    if (!hasValidMetaSignature(request.rawBody, signature)) {
+    if (request.rawBody.byteLength > 1024 * 1024) {
+      response.sendStatus(413);
+      return;
+    }
+    if (!hasValidMetaSignature(request.rawBody, request.header("x-hub-signature-256"), whatsappAppSecret.value())) {
       response.sendStatus(401);
       return;
     }
-
-    await Promise.all(extractMessages(request.body).map(async (message) => {
-      const safeId = message.id.replace(/[^a-zA-Z0-9_-]/g, "-");
-      const reference = getFirestore().collection("whatsapp_inbound").doc(safeId);
-      try {
-        await reference.create({
+    const expectedPhone = whatsappPhoneNumberId.value();
+    if (!/^[0-9]{6,30}$/.test(expectedPhone)) {
+      response.sendStatus(503);
+      return;
+    }
+    const now = Date.now();
+    await Promise.all(extractWhatsAppMessages(request.body, expectedPhone).map(async (message) => {
+      // Message IDs are opaque. Hashing avoids collisions caused by replacing punctuation.
+      const reference = getFirestore().collection("whatsapp_inbound").doc(privacyHash(message.id));
+      const legacyReference = getFirestore().collection("whatsapp_inbound").doc(message.id.replace(/[^a-zA-Z0-9_-]/g, "-"));
+      const receivedAtMs = Number(message.timestamp) * 1000;
+      const validTime = Number.isFinite(receivedAtMs) && receivedAtMs > 0 &&
+        receivedAtMs <= now + 5 * 60_000 && now - receivedAtMs <= whatsappMaximumAgeMs;
+      const text = typeof message.text?.body === "string" ? message.text.body.trim() : "";
+      const validText = message.type === "text" && text.length > 0 && text.length <= 2000;
+      const formatNotice = needsWhatsAppFormatNotice(message.type);
+      const status = message.type !== "text" && !formatNotice
+        ? "ignored" : validTime && (validText || formatNotice) ? "pending" : "failed";
+      // Keep the old ID check during migration so a retried pre-release webhook cannot enqueue twice.
+      await getFirestore().runTransaction(async (transaction) => {
+        const [current, legacy] = await transaction.getAll(reference, legacyReference);
+        if (current?.exists || legacy?.exists) return;
+        transaction.create(reference, {
           messageId: message.id,
           senderHash: privacyHash(message.from),
-          sender: message.from,
+          // Never persist media, captions, URLs, filenames or contact/location payloads.
+          ...(status === "pending" ? {sender: message.from, ...(validText ? {text} : {})} : {}),
           type: message.type,
-          text: message.text?.body?.trim() || null,
-          status: "pending",
+          status,
+          attempts: 0,
+          receivedAtMs: validTime ? receivedAtMs : now,
           receivedAt: FieldValue.serverTimestamp(),
+          expiresAt: Timestamp.fromMillis(now + whatsappRetentionMs),
+          ...(status !== "pending" ? {
+            processedAt: FieldValue.serverTimestamp(),
+            lastError: status === "failed" ? "INVALID_MESSAGE" : null,
+          } : {}),
         });
-      } catch (error) {
-        // Meta reintenta webhooks. El ID de mensaje funciona como clave idempotente.
-        logger.info("Mensaje de WhatsApp ya recibido", {messageId: message.id});
-      }
+      });
     }));
     response.sendStatus(200);
   },
 );
 
 async function sendWhatsAppText(to: string, body: string): Promise<void> {
-  const url = `https://graph.facebook.com/${whatsappGraphVersion.value()}/` +
-    `${whatsappPhoneNumberId.value()}/messages`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${whatsappAccessToken.value()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      recipient_type: "individual",
-      to,
-      type: "text",
-      text: {preview_url: false, body},
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`WhatsApp respondió ${response.status}: ${await response.text()}`);
+  if (body.length > 4096) throw new WhatsAppDeliveryError("permanent", "META_MESSAGE_TOO_LONG");
+  let response: Response;
+  try {
+    response = await fetch(`https://graph.facebook.com/${whatsappGraphVersion.value()}/${whatsappPhoneNumberId.value()}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${whatsappAccessToken.value()}`,
+        "Content-Type": "application/json",
+      },
+      signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to,
+        type: "text",
+        text: {preview_url: false, body},
+      }),
+    });
+  } catch {
+    throw new WhatsAppDeliveryError("uncertain", "META_DELIVERY_UNCONFIRMED");
   }
+  if (response.ok) return;
+  // A lost connection or server error may occur after Meta accepted delivery.
+  // Only an explicit throttling response is safe to retry automatically.
+  throw new WhatsAppDeliveryError(
+    response.status === 429 ? "retry" : response.status >= 500 || response.status === 408 ? "uncertain" : "permanent",
+    `META_HTTP_${response.status}`,
+  );
 }
 
 export const processWhatsAppInbound = onDocumentCreated(
@@ -141,38 +137,45 @@ export const processWhatsAppInbound = onDocumentCreated(
     retry: true,
   },
   async (event) => {
-    const snapshot = event.data;
-    if (!snapshot) return;
-    const data = snapshot.data();
-    if (data.status !== "pending") return;
-
-    if (data.type !== "text" || typeof data.text !== "string" || !data.text) {
-      await snapshot.ref.update({status: "ignored", processedAt: FieldValue.serverTimestamp()});
-      return;
-    }
-
-    try {
-      const result = await answerChat({
-        message: data.text,
-        conversationId: `wa-${data.senderHash}`,
-        participantId: data.senderHash,
+    if (!event.data) return;
+    const reference = event.data.ref;
+    await processWhatsAppJob({
+      owner: randomUUID(),
+      now: Date.now,
+      store: {
+        transaction: (change) => getFirestore().runTransaction(async (transaction) => {
+          const snapshot = await transaction.get(reference);
+          if (!snapshot.exists) return null;
+          const data = snapshot.data()!;
+          const current = {
+            ...data,
+            receivedAtMs: data.receivedAtMs ?? (data.receivedAt instanceof Timestamp ? data.receivedAt.toMillis() : NaN),
+          } as WhatsAppJob;
+          const patch = change(current);
+          if (!patch) return null;
+          const storedPatch: Record<string, unknown> = {...patch};
+          for (const key of ["sender", "text", "answer", "leaseOwner", "leaseUntilMs", "lastError"] as const) {
+            if (patch[key] === null) storedPatch[key] = FieldValue.delete();
+          }
+          if (patch.expiresAtMs !== undefined) storedPatch.expiresAt = Timestamp.fromMillis(patch.expiresAtMs);
+          if (patch.processedAtMs !== undefined) storedPatch.processedAt = Timestamp.fromMillis(patch.processedAtMs);
+          transaction.update(reference, storedPatch);
+          return {...current, ...patch};
+        }),
+      },
+      generate: (job) => answerChat({
+        message: job.text!,
+        conversationId: `wa-${job.senderHash}`,
+        participantId: job.senderHash!,
         channel: "whatsapp",
+      }),
+      send: sendWhatsAppText,
+    }).catch((error: unknown) => {
+      // No provider payload, phone, text or access token is written to logs.
+      logger.warn("Procesamiento de WhatsApp pendiente de reintento", {
+        code: error instanceof Error && /^[A-Z_0-9]{1,80}$/.test(error.message) ? error.message : "WORKER_RETRY",
       });
-      await sendWhatsAppText(data.sender, result.answer);
-      await snapshot.ref.update({
-        status: "sent",
-        conversationId: result.conversationId,
-        sender: FieldValue.delete(),
-        processedAt: FieldValue.serverTimestamp(),
-      });
-    } catch (error) {
-      logger.error("No se pudo procesar el mensaje de WhatsApp", error);
-      await snapshot.ref.update({
-        lastError: error instanceof Error ? error.message.slice(0, 500) : "unknown",
-        attempts: FieldValue.increment(1),
-        lastAttemptAt: FieldValue.serverTimestamp(),
-      });
-      throw error;
-    }
+      throw new Error("WHATSAPP_WORKER_RETRY");
+    });
   },
 );

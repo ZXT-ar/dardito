@@ -1,15 +1,17 @@
 import 'dart:math';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/config/whatsapp_config.dart';
+import '../../core/platform/whatsapp_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/ui.dart';
+import '../../data/catalogs/story_catalog.dart';
 import '../../data/models/story.dart';
-import '../../data/repositories/story_repository.dart';
 import '../explore/map/dardito_map_surface.dart';
-import '../install/install_banner.dart';
 import '../legal/legal_page.dart';
 import '../story/story_widgets.dart';
 
@@ -18,11 +20,13 @@ class HomePage extends StatelessWidget {
     super.key,
     required this.stories,
     required this.onExplore,
+    required this.onExploreCategory,
     required this.onNavigate,
     required this.onOpenLegal,
   });
   final List<CityStory> stories;
   final ValueChanged<CityStory?> onExplore;
+  final ValueChanged<String> onExploreCategory;
   final ValueChanged<int> onNavigate;
   final ValueChanged<LegalDocument> onOpenLegal;
 
@@ -31,17 +35,19 @@ class HomePage extends StatelessWidget {
     child: Column(
       children: [
         _Hero(onExplore: () => onExplore(null), onAsk: () => onNavigate(2)),
-        Transform.translate(
-          offset: const Offset(0, -24),
-          child: const Entrance(
-            distance: 14,
-            startScale: .985,
-            child: MaxWidth(child: InstallBanner()),
+        const SizedBox(height: 72),
+        Entrance(
+          delay: const Duration(milliseconds: 80),
+          child: MaxWidth(
+            child: _MapCallout(
+              stories: stories,
+              onExplore: () => onExplore(null),
+            ),
           ),
         ),
-        const SizedBox(height: 52),
+        const SizedBox(height: 96),
         Entrance(
-          child: MaxWidth(child: _Categories(onExplore: () => onExplore(null))),
+          child: MaxWidth(child: _Categories(onExplore: onExploreCategory)),
         ),
         const SizedBox(height: 96),
         Entrance(
@@ -55,34 +61,37 @@ class HomePage extends StatelessWidget {
         ),
         const SizedBox(height: 96),
         Entrance(
-          delay: const Duration(milliseconds: 140),
-          child: MaxWidth(
-            child: _MapCallout(
-              stories: stories,
-              onExplore: () => onExplore(null),
-            ),
-          ),
-        ),
-        const SizedBox(height: 96),
-        Entrance(
           delay: const Duration(milliseconds: 180),
           child: MaxWidth(
             child: _TrustSection(onContribute: () => onNavigate(3)),
           ),
         ),
         const SizedBox(height: 96),
-        _WhatsAppCallout(
-          onAsk: () async {
-            final uri = Uri.parse(
-              'https://wa.me/?text=${Uri.encodeComponent('Hola Dardito, quiero descubrir una historia de La Plata')}',
-            );
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          },
-        ),
+        _WhatsAppCallout(onAsk: () => _openWhatsAppConversation(context)),
         _Footer(onOpenLegal: onOpenLegal),
       ],
     ),
   );
+}
+
+Future<void> _openWhatsAppConversation(BuildContext context) async {
+  final opened = await openDarditoWhatsApp(
+    message: 'Hola Dardito, quiero conocer una historia de La Plata.',
+  );
+  if (opened || !context.mounted) return;
+  await Clipboard.setData(
+    const ClipboardData(text: WhatsAppConfig.displayPhoneNumber),
+  );
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      const SnackBar(
+        content: Text(
+          'No pudimos abrir WhatsApp. Copiamos el número +54 9 221 319-7058.',
+        ),
+      ),
+    );
 }
 
 class _Hero extends StatelessWidget {
@@ -108,10 +117,8 @@ class _Hero extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SectionEyebrow('El guardián de las historias', light: true),
-              const SizedBox(height: 24),
               Text(
-                'La Plata tiene\nmiles de historias.',
+                'El Mapa de las\nHistorias de La Plata.',
                 style: Theme.of(context).textTheme.displayLarge?.copyWith(
                   color: AppColors.cream,
                   fontSize: narrow ? 46 : 68,
@@ -119,7 +126,7 @@ class _Hero extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                'Dardito te ayuda a encontrarlas.',
+                'Dardito te ayuda a descubrirlas.',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   color: AppColors.yellow,
                   fontWeight: FontWeight.w600,
@@ -129,10 +136,18 @@ class _Hero extends StatelessWidget {
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 520),
                 child: Text(
-                  'Explorá lugares, conectá recuerdos y descubrí lo que hace única a la ciudad.',
+                  'Explorá las historias, personas, lugares y misterios que hicieron, hacen y siguen haciendo única a La Plata.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: AppColors.cream.withValues(alpha: .78),
                   ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'La ciudad nunca deja de contarse.',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.cream.withValues(alpha: .72),
+                  fontStyle: FontStyle.italic,
                 ),
               ),
               const SizedBox(height: 34),
@@ -180,7 +195,7 @@ class _Hero extends StatelessWidget {
               child: SizedBox(
                 height: narrow ? 370 : 570,
                 child: Image.asset(
-                  'assets/brand/dardito_waving.png',
+                  'assets/brand/dardito_hero_regenerated_v4.png',
                   fit: BoxFit.contain,
                   alignment: Alignment.bottomCenter,
                   filterQuality: FilterQuality.high,
@@ -249,7 +264,7 @@ class _FloatingVisualState extends State<_FloatingVisual>
 
 class _Categories extends StatelessWidget {
   const _Categories({required this.onExplore});
-  final VoidCallback onExplore;
+  final ValueChanged<String> onExplore;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -267,28 +282,75 @@ class _Categories extends StatelessWidget {
               ? 1
               : c.maxWidth < 960
               ? 2
-              : 3;
+              : 2;
           final width = (c.maxWidth - (16 * (columns - 1))) / columns;
           return Wrap(
             spacing: 16,
             runSpacing: 16,
             children: [
-              for (
-                var index = 0;
-                index < LocalStoryRepository.categories.length;
-                index++
-              )
+              for (var index = 0; index < _explorationDoors.length; index++)
                 _CategoryCard(
-                  category: LocalStoryRepository.categories[index],
+                  category: _explorationDoor(_explorationDoors[index]),
                   index: index,
                   width: width,
-                  onTap: onExplore,
+                  onTap: () => onExplore(_explorationDoors[index].id),
                 ),
             ],
           );
         },
       ),
     ],
+  );
+}
+
+const _explorationDoors = <StoryCategory>[
+  StoryCategory(
+    'architecture',
+    'Arquitectura',
+    Icons.architecture_rounded,
+    AppColors.rust,
+    description:
+        'Historias vinculadas a edificios, casas, plazas, monumentos, calles, obras, espacios urbanos y al diseño de la ciudad.',
+  ),
+  StoryCategory(
+    'mystery',
+    'Misterios',
+    Icons.auto_awesome_rounded,
+    Color(0xFF5E537B),
+    description:
+        'Historias, enigmas, leyendas, versiones o preguntas que todavía no tienen una explicación del todo clara.',
+  ),
+  StoryCategory(
+    'culture',
+    'Cultura',
+    Icons.theater_comedy_rounded,
+    Color(0xFF9A6B24),
+    description:
+        'Costumbres, expresiones, personajes, espacios, actividades o formas de vivir que forman parte de la identidad y la vida cotidiana de La Plata.',
+  ),
+  StoryCategory(
+    'memory',
+    'Tradición oral',
+    Icons.record_voice_over_outlined,
+    Color(0xFF416A76),
+    description:
+        'Historias que se transmitieron de persona a persona, en familias, barrios, clubes, escuelas o instituciones, aunque no siempre estén escritas o documentadas.',
+  ),
+];
+
+StoryCategory _explorationDoor(StoryCategory fallback) {
+  final description = StoryCatalog.resolve(
+    fallback.id,
+    fallback.label,
+  ).description?.trim();
+  return StoryCategory(
+    fallback.id,
+    fallback.label,
+    fallback.icon,
+    fallback.color,
+    description: description == null || description.isEmpty
+        ? fallback.description
+        : description,
   );
 }
 
@@ -312,7 +374,6 @@ class _CategoryCard extends StatelessWidget {
     startScale: .975,
     child: SizedBox(
       width: width,
-      height: 142,
       child: HoverLift(
         child: Card(
           child: InkWell(
@@ -338,13 +399,23 @@ class _CategoryCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      category.label,
-                      style: Theme.of(context).textTheme.titleLarge,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          category.label,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          category.description!,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppColors.muted),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(width: 12),
                   ScrollEntrance(
                     delay: Duration(milliseconds: 150 + 60 * index),
                     distance: .08,
@@ -507,7 +578,7 @@ class _MapCalloutState extends State<_MapCallout> {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  'Recorré La Plata por barrio, época o curiosidad. Las historias documentadas y las memorias de la comunidad tienen su propia señal.',
+                  'Recorré La Plata por barrio, época o curiosidad. Encontrá historias documentadas y aportes de vecinos, familias e instituciones.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: AppColors.cream.withValues(alpha: .72),
                   ),
@@ -568,15 +639,23 @@ class _TrustSection extends StatelessWidget {
           const SectionEyebrow('Un mapa entre todos'),
           const SizedBox(height: 18),
           Text(
-            'Tu recuerdo también\nconstruye la ciudad.',
+            'Tu historia también puede\nformar parte del mapa.',
             style: Theme.of(context).textTheme.displayMedium,
           ),
           const SizedBox(height: 18),
           Text(
-            'Una foto, una anécdota familiar o la historia de un comercio pueden sumar una pieza que faltaba. Cada aporte se revisa antes de publicarse.',
+            'Puede ser una persona, un comercio, una institución, una costumbre, una fotografía, un lugar especial o algo que esté ocurriendo hoy. Cada aporte se revisa antes de publicarse.',
             style: Theme.of(
               context,
             ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'La Plata también se cuenta desde quienes la viven.',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppColors.muted,
+              fontStyle: FontStyle.italic,
+            ),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
@@ -592,7 +671,7 @@ class _TrustSection extends StatelessWidget {
             icon: Icons.verified_outlined,
             title: 'Claridad editorial',
             text:
-                'Distinguimos hechos documentados, tradición oral y aportes comunitarios.',
+                'Identificamos cada historia como Documentada o Aporte de vecinos, según su respaldo.',
           ),
           _Principle(
             icon: Icons.shield_outlined,
@@ -671,43 +750,194 @@ class _Principle extends StatelessWidget {
 class _WhatsAppCallout extends StatelessWidget {
   const _WhatsAppCallout({required this.onAsk});
   final VoidCallback onAsk;
+
   @override
-  Widget build(BuildContext context) => Container(
-    color: AppColors.yellow,
-    padding: const EdgeInsets.symmetric(vertical: 72),
-    child: MaxWidth(
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        runSpacing: 28,
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => constraints.maxWidth >= 1050
+        ? _DesktopWhatsAppCallout(onAsk: onAsk)
+        : _CompactWhatsAppCallout(onAsk: onAsk),
+  );
+}
+
+class _DesktopWhatsAppCallout extends StatelessWidget {
+  const _DesktopWhatsAppCallout({required this.onAsk});
+  final VoidCallback onAsk;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 390,
+    child: ColoredBox(
+      color: AppColors.cream,
+      child: Stack(
         children: [
-          SizedBox(
-            width: 680,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionEyebrow('También en WhatsApp'),
-                const SizedBox(height: 16),
-                Text(
-                  'Una conversación puede ser el comienzo de otro recorrido.',
-                  style: Theme.of(context).textTheme.displayMedium,
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Preguntá por tu barrio, una época o pedile a Dardito una historia al azar.',
-                ),
-              ],
+          const Positioned(
+            top: 105,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            child: ColoredBox(color: AppColors.yellow),
+          ),
+          Positioned.fill(
+            child: MaxWidth(
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: 155,
+                    right: 0,
+                    left: 0,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Expanded(child: _WhatsAppCopy()),
+                        const SizedBox(width: 280),
+                        _WhatsAppButton(onAsk: onAsk),
+                      ],
+                    ),
+                  ),
+                  const Positioned(
+                    top: 0,
+                    right: 205,
+                    child: _BoundaryDardito(width: 270, height: 360),
+                  ),
+                ],
+              ),
             ),
           ),
-          FilledButton.icon(
-            onPressed: onAsk,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.ink,
-              foregroundColor: AppColors.paper,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+        ],
+      ),
+    ),
+  );
+}
+
+class _CompactWhatsAppCallout extends StatelessWidget {
+  const _CompactWhatsAppCallout({required this.onAsk});
+  final VoidCallback onAsk;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final phone = constraints.maxWidth < 600;
+      final artHeight = phone ? 250.0 : 290.0;
+      final artWidth = phone ? 188.0 : 218.0;
+      return ColoredBox(
+        color: AppColors.cream,
+        child: Stack(
+          alignment: Alignment.topCenter,
+          children: [
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(top: 80),
+              padding: EdgeInsets.fromLTRB(24, phone ? 205 : 230, 24, 52),
+              color: AppColors.yellow,
+              child: MaxWidth(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _WhatsAppCopy(compact: phone),
+                    const SizedBox(height: 28),
+                    _WhatsAppButton(onAsk: onAsk),
+                  ],
+                ),
+              ),
             ),
-            icon: const Icon(Icons.forum_outlined),
-            label: const Text('Abrir WhatsApp'),
+            Positioned(
+              top: 0,
+              child: _BoundaryDardito(width: artWidth, height: artHeight),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+class _WhatsAppCopy extends StatelessWidget {
+  const _WhatsAppCopy({this.compact = false});
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SectionEyebrow('También en WhatsApp'),
+      const SizedBox(height: 16),
+      Text(
+        'Una conversación puede ser el comienzo de otro recorrido.',
+        style: Theme.of(
+          context,
+        ).textTheme.displayMedium?.copyWith(fontSize: compact ? 36 : 42),
+      ),
+      const SizedBox(height: 12),
+      const Text(
+        'Preguntá por tu barrio, una persona, un lugar, una época o pedile a Dardito una historia al azar.',
+      ),
+    ],
+  );
+}
+
+class _WhatsAppButton extends StatelessWidget {
+  const _WhatsAppButton({required this.onAsk});
+  final VoidCallback onAsk;
+
+  @override
+  Widget build(BuildContext context) => FilledButton.icon(
+    onPressed: onAsk,
+    style: FilledButton.styleFrom(
+      backgroundColor: AppColors.ink,
+      foregroundColor: AppColors.paper,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+    ),
+    icon: const Icon(Icons.forum_outlined),
+    label: const Text('Abrir WhatsApp'),
+  );
+}
+
+class _BoundaryDardito extends StatelessWidget {
+  const _BoundaryDardito({required this.width, required this.height});
+  final double width;
+  final double height;
+
+  static const _asset = 'assets/brand/dardito_seated_phone_v1.png';
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    image: true,
+    label: 'Dardito sentado conversando por teléfono',
+    child: SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: ExcludeSemantics(
+              child: Transform.translate(
+                offset: const Offset(8, 12),
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 9, sigmaY: 9),
+                  child: ColorFiltered(
+                    colorFilter: ColorFilter.mode(
+                      Colors.black.withValues(alpha: .28),
+                      BlendMode.srcIn,
+                    ),
+                    child: Image.asset(
+                      _asset,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: Image.asset(
+              _asset,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+              excludeFromSemantics: true,
+            ),
           ),
         ],
       ),
@@ -733,7 +963,7 @@ class _Footer extends StatelessWidget {
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 430),
               child: Text(
-                'Historias, memoria y cultura para mirar La Plata con otros ojos.',
+                'Historias, lugares y personas de ayer y de hoy que hacen única a La Plata.',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: AppColors.cream.withValues(alpha: .72),
                   height: 1.35,
@@ -757,19 +987,6 @@ class _Footer extends StatelessWidget {
                   onPressed: () => onOpenLegal(LegalDocument.terms),
                   style: TextButton.styleFrom(foregroundColor: AppColors.paper),
                   child: const Text('Términos y condiciones'),
-                ),
-                TextButton(
-                  onPressed: () => onOpenLegal(LegalDocument.privacy),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.paper),
-                  child: const Text('Privacidad'),
-                ),
-                _InstagramLink(
-                  onTap: () async {
-                    await launchUrl(
-                      Uri.parse('https://www.instagram.com/'),
-                      mode: LaunchMode.externalApplication,
-                    );
-                  },
                 ),
               ],
             ),
@@ -809,21 +1026,29 @@ class _Footer extends StatelessWidget {
                 const SizedBox(height: 44),
                 Divider(color: AppColors.cream.withValues(alpha: .14)),
                 const SizedBox(height: 22),
-                Wrap(
-                  spacing: 14,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.spaceBetween,
-                  children: const [
-                    Text(
-                      '© 2026 Dardito · La Plata, Argentina',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
-                    Text(
-                      'Copy y experiencia digital por Simbiosis Digital',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
-                  ],
-                ),
+                if (mobile)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '© 2026 El Mapa de las Historias de La Plata',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
+                      const _SimbiosisDigitalLink(),
+                    ],
+                  )
+                else
+                  const Row(
+                    children: [
+                      Text(
+                        '© 2026 El Mapa de las Historias de La Plata',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                      Spacer(),
+                      _SimbiosisDigitalLink(),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -837,103 +1062,26 @@ class _FooterBrandMark extends StatelessWidget {
   const _FooterBrandMark();
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      ClipRRect(
-        borderRadius: BorderRadius.circular(15),
-        child: Image.asset(
-          'assets/brand/dardito_app_icon.png',
-          width: 54,
-          height: 54,
-          fit: BoxFit.cover,
-          filterQuality: FilterQuality.high,
-        ),
-      ),
-      const SizedBox(width: 13),
-      const Text(
-        'DARDITO',
-        style: TextStyle(
-          fontSize: 27,
-          fontWeight: FontWeight.w900,
-          letterSpacing: -1,
-          color: AppColors.cream,
-        ),
-      ),
-      Container(
-        width: 7,
-        height: 7,
-        margin: const EdgeInsets.only(left: 4, top: 13),
-        decoration: const BoxDecoration(
-          color: AppColors.yellow,
-          shape: BoxShape.circle,
-        ),
-      ),
-    ],
-  );
+  Widget build(BuildContext context) => const ProjectMark(light: true);
 }
 
-class _InstagramLink extends StatelessWidget {
-  const _InstagramLink({required this.onTap});
-  final VoidCallback onTap;
+class _SimbiosisDigitalLink extends StatelessWidget {
+  const _SimbiosisDigitalLink();
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    label: 'Instagram',
-    child: OutlinedButton.icon(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.paper,
-        side: BorderSide(color: AppColors.paper.withValues(alpha: .24)),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+  Widget build(BuildContext context) => InkWell(
+    onTap: () async {
+      await launchUrl(
+        Uri.parse('https://simbiosisdigital.com.ar'),
+        mode: LaunchMode.externalApplication,
+      );
+    },
+    child: const Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Text(
+        'Desarrollado por SimbiosisDigital',
+        style: TextStyle(color: Colors.white54, fontSize: 12),
       ),
-      icon: const _InstagramGlyph(),
-      label: const Text('Instagram'),
-    ),
-  );
-}
-
-class _InstagramGlyph extends StatelessWidget {
-  const _InstagramGlyph();
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 18,
-    height: 18,
-    child: Stack(
-      children: [
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.paper, width: 1.8),
-              borderRadius: BorderRadius.circular(5),
-            ),
-          ),
-        ),
-        Center(
-          child: Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.paper, width: 1.6),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-        Positioned(
-          right: 3.3,
-          top: 3.3,
-          child: Container(
-            width: 2.6,
-            height: 2.6,
-            decoration: const BoxDecoration(
-              color: AppColors.paper,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      ],
     ),
   );
 }

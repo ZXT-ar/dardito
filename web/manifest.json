@@ -1,6 +1,6 @@
 {
-    "name": "Dardito · Historias de La Plata",
-    "short_name": "Dardito",
+    "name": "El Mapa de las Historias de La Plata",
+    "short_name": "Mapa LP",
     "id": "/",
     "start_url": "/",
     "scope": "/",
@@ -8,7 +8,7 @@
     "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
     "background_color": "#F4EFE4",
     "theme_color": "#F4B900",
-    "description": "El mapa vivo de las historias, misterios y memorias de La Plata.",
+    "description": "Historias, personas, lugares y misterios de ayer y de hoy de La Plata.",
     "orientation": "any",
     "categories": ["travel", "education", "lifestyle"],
     "lang": "es-AR",
@@ -19,36 +19,36 @@
             "short_name": "Explorar",
             "description": "Abrir el mapa de historias de La Plata",
             "url": "/?section=explore",
-            "icons": [{"src": "icons/Icon-192.png", "sizes": "192x192"}]
+            "icons": [{"src": "icons/mhdlp-icon-192-v2.png", "sizes": "192x192", "type": "image/png"}]
         },
         {
             "name": "Preguntale a Dardito",
             "short_name": "Dardito",
             "description": "Abrir el asistente de historias",
             "url": "/?section=assistant",
-            "icons": [{"src": "icons/Icon-192.png", "sizes": "192x192"}]
+            "icons": [{"src": "icons/mhdlp-icon-192-v2.png", "sizes": "192x192", "type": "image/png"}]
         }
     ],
     "prefer_related_applications": false,
     "icons": [
         {
-            "src": "icons/Icon-192.png",
+            "src": "icons/mhdlp-icon-192-v2.png",
             "sizes": "192x192",
             "type": "image/png"
         },
         {
-            "src": "icons/Icon-512.png",
+            "src": "icons/mhdlp-icon-512-v2.png",
             "sizes": "512x512",
             "type": "image/png"
         },
         {
-            "src": "icons/Icon-maskable-192.png",
+            "src": "icons/mhdlp-maskable-192-v2.png",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "maskable"
         },
         {
-            "src": "icons/Icon-maskable-512.png",
+            "src": "icons/mhdlp-maskable-512-v2.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "maskable"

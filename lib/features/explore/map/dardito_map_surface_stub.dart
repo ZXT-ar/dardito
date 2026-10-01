@@ -19,6 +19,8 @@ class DarditoMapSurface extends StatelessWidget {
     required this.bottomPadding,
     required this.rightPadding,
     this.interactive = true,
+    this.lightTheme = false,
+    this.onCluster,
   });
 
   final List<CityStory> stories;
@@ -29,6 +31,8 @@ class DarditoMapSurface extends StatelessWidget {
   final double bottomPadding;
   final double rightPadding;
   final bool interactive;
+  final bool lightTheme;
+  final ValueChanged<List<CityStory>>? onCluster;
 
   @override
   Widget build(BuildContext context) => const ColoredBox(

@@ -18,53 +18,94 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Dardito: explorá las historias, misterios y memorias de La Plata.">
+  <meta name="description" content="El Mapa de las Historias de La Plata: explorá historias, personas, lugares y misterios de ayer y de hoy junto a Dardito.">
+  <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
   <meta name="theme-color" content="#F4B900">
+  <link rel="canonical" href="https://darditohistoriasplatenses.com/">
+
+  <!-- Identidad social y previsualización por defecto. Cada historia publicada
+       posee además una página HTML propia con metadatos específicos. -->
+  <meta property="og:locale" content="es_AR">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="El Mapa de las Historias de La Plata">
+  <meta property="og:title" content="El Mapa de las Historias de La Plata">
+  <meta property="og:description" content="Explorá historias, personas, lugares y misterios de ayer y de hoy junto a Dardito.">
+  <meta property="og:url" content="https://darditohistoriasplatenses.com/">
+  <meta property="og:image" content="https://darditohistoriasplatenses.com/assets/assets/brand/mhdlp_logo_horizontal.jpg">
+  <meta property="og:image:secure_url" content="https://darditohistoriasplatenses.com/assets/assets/brand/mhdlp_logo_horizontal.jpg">
+  <meta property="og:image:alt" content="Logo de El Mapa de las Historias de La Plata">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="El Mapa de las Historias de La Plata">
+  <meta name="twitter:description" content="Explorá historias, personas, lugares y misterios de ayer y de hoy junto a Dardito.">
+  <meta name="twitter:image" content="https://darditohistoriasplatenses.com/assets/assets/brand/mhdlp_logo_horizontal.jpg">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Dardito">
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="Mapa Historias LP">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/mhdlp-apple-touch-v2.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" sizes="64x64" href="favicon-mhdlp-v2.png"/>
+  <link rel="shortcut icon" type="image/x-icon" href="favicon.ico"/>
 
-  <title>Dardito · Historias de La Plata</title>
+  <title>El Mapa de las Historias de La Plata</title>
   <link rel="manifest" href="manifest.json">
-  <style>
-    @media (hover: hover) and (pointer: fine) {
-      html,
-      body,
-      body * {
-        cursor: none !important;
-      }
-
-      #dardito-cursor {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 32px;
-        height: 32px;
-        pointer-events: none;
-        z-index: 2147483647;
-        opacity: 0;
-        background: #ffffff;
-        mix-blend-mode: difference;
-        -webkit-mask: url("icons/pen-nib-cursor.svg") center / contain no-repeat;
-        mask: url("icons/pen-nib-cursor.svg") center / contain no-repeat;
-        will-change: transform;
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "El Mapa de las Historias de La Plata",
+      "alternateName": "Mapa de las Historias de La Plata",
+      "url": "https://darditohistoriasplatenses.com/",
+      "description": "Historias, personas, lugares y misterios de ayer y de hoy de la ciudad de La Plata.",
+      "inLanguage": "es-AR",
+      "publisher": {
+        "@type": "Organization",
+        "name": "El Mapa de las Historias de La Plata",
+        "logo": "https://darditohistoriasplatenses.com/icons/mhdlp-icon-512-v2.png"
       }
     }
-  </style>
+  </script>
+  <script>
+    // Migración única: las primeras versiones publicadas en Hostinger podían
+    // conservar un service worker que todavía consultaba /api/stories. Se
+    // eliminan ese worker y sus cachés una sola vez antes de cargar Flutter.
+    (() => {
+      const currentUrl = new URL(window.location.href);
+      if (currentUrl.searchParams.has('cacheMigration')) {
+        currentUrl.searchParams.delete('cacheMigration');
+        window.history.replaceState(
+          window.history.state,
+          '',
+          `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
+        );
+      }
+
+      const migrationKey = 'mhdlp-auth-consent-v1';
+      if (localStorage.getItem(migrationKey) === 'done') return;
+      localStorage.setItem(migrationKey, 'done');
+
+      const clearWorkers = 'serviceWorker' in navigator
+        ? navigator.serviceWorker.getRegistrations().then((registrations) =>
+            Promise.all(registrations.map((registration) => registration.unregister())))
+        : Promise.resolve();
+      const clearCaches = 'caches' in window
+        ? caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+        : Promise.resolve();
+
+      Promise.all([clearWorkers, clearCaches]).then(() => {
+        window.location.reload();
+      });
+    })();
+  </script>
+  <script src="site-measurement.js"></script>
   <script src="install.js"></script>
-  <script src="cursor.js" defer></script>
   <!-- Carga síncrona requerida por google_maps_flutter_web. Esta clave web
        debe restringirse por HTTP referrer y a Maps JavaScript API. -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyByFI6izL7wo9iSZmj4gyb_ZAlntRYBiaM"></script>
 </head>
 <body>
-  <div id="dardito-cursor" aria-hidden="true"></div>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -73,6 +114,6 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
-  <script src="flutter_bootstrap.js?v=20260724-firebase-bootstrap-2" async></script>
+  <script src="flutter_bootstrap.js?v=20261001-sesion-fechas-v6" async></script>
 </body>
 </html>

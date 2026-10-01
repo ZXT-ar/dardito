@@ -94,7 +94,7 @@ class _InstallBannerState extends State<InstallBanner> {
               ),
               SizedBox(width: 9),
               Text(
-                'Dardito ya está instalado',
+                'El mapa ya está instalado',
                 style: TextStyle(
                   color: AppColors.yellow,
                   fontWeight: FontWeight.w800,
@@ -132,7 +132,7 @@ class _InstallBannerState extends State<InstallBanner> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(18),
                     child: Image.asset(
-                      'assets/brand/dardito_app_icon.png',
+                      'assets/brand/mhdlp_pictogram.png',
                       width: 64,
                       height: 64,
                       fit: BoxFit.cover,
@@ -162,7 +162,7 @@ class _InstallBannerState extends State<InstallBanner> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Llevá Dardito con vos',
+                          'Llevá el mapa con vos',
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 2),
@@ -198,7 +198,7 @@ class _InstallBannerState extends State<InstallBanner> {
                             : Icons.add_to_home_screen_rounded,
                       ),
                 label: Text(
-                  _info.canPrompt ? 'Instalar Dardito' : 'Cómo instalarlo',
+                  _info.canPrompt ? 'Instalar el mapa' : 'Cómo instalarlo',
                 ),
               );
               return compact
@@ -249,7 +249,7 @@ class _InstallInstructions extends StatelessWidget {
       (
         Icons.check_circle_outline_rounded,
         'Confirmá',
-        'Tocá “Agregar”. Dardito aparecerá junto a tus aplicaciones.',
+        'Tocá “Agregar”. El mapa aparecerá junto a tus aplicaciones.',
       ),
     ],
     InstallPlatform.macos => [
@@ -261,7 +261,7 @@ class _InstallInstructions extends StatelessWidget {
       (
         Icons.install_desktop_rounded,
         'Instalá la aplicación',
-        'Elegí “Instalar Dardito” o “Agregar al Dock”.',
+        'Elegí “Instalar el mapa” o “Agregar al Dock”.',
       ),
       (
         Icons.apps_rounded,
@@ -283,7 +283,7 @@ class _InstallInstructions extends StatelessWidget {
       (
         Icons.window_rounded,
         'Acceso desde Windows',
-        'Dardito quedará en Inicio, Escritorio y la barra de tareas.',
+        'El mapa quedará en Inicio, Escritorio y la barra de tareas.',
       ),
     ],
     InstallPlatform.android => [
@@ -300,14 +300,14 @@ class _InstallInstructions extends StatelessWidget {
       (
         Icons.check_circle_outline_rounded,
         'Confirmá',
-        'Dardito aparecerá junto a tus aplicaciones.',
+        'El mapa aparecerá junto a tus aplicaciones.',
       ),
     ],
     InstallPlatform.other => [
       (
         Icons.browser_updated_rounded,
         'Usá un navegador compatible',
-        'Abrí Dardito con Chrome, Edge o Safari.',
+        'Abrí El Mapa de las Historias de La Plata con Chrome, Edge o Safari.',
       ),
       (
         Icons.install_desktop_rounded,
@@ -317,7 +317,7 @@ class _InstallInstructions extends StatelessWidget {
       (
         Icons.home_rounded,
         'Creá el acceso',
-        'Confirmá para abrir Dardito como una aplicación independiente.',
+        'Confirmá para abrir el mapa como una aplicación independiente.',
       ),
     ],
   };
@@ -348,7 +348,7 @@ class _InstallInstructions extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(18),
                     child: Image.asset(
-                      'assets/brand/dardito_app_icon.png',
+                      'assets/brand/mhdlp_pictogram.png',
                       width: 64,
                       height: 64,
                     ),

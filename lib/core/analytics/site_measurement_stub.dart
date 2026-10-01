@@ -1,0 +1,1 @@
+void measureSiteSection(int section) {}

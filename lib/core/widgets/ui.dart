@@ -77,50 +77,35 @@ class TrustBadge extends StatelessWidget {
   );
 }
 
-class DarditoMark extends StatelessWidget {
-  const DarditoMark({super.key, this.light = false, this.compact = false});
+class ProjectMark extends StatelessWidget {
+  const ProjectMark({super.key, this.light = false, this.compact = false});
   final bool light;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final color = light ? AppColors.cream : AppColors.ink;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: compact ? 34 : 42,
-          height: compact ? 34 : 42,
-          decoration: BoxDecoration(
-            color: AppColors.yellow,
-            borderRadius: BorderRadius.circular(11),
-          ),
-          child: Icon(
-            Icons.menu_book_rounded,
-            color: AppColors.ink,
-            size: compact ? 20 : 24,
-          ),
+    final height = compact ? 42.0 : 62.0;
+    return Semantics(
+      image: true,
+      label: 'El Mapa de las Historias de La Plata',
+      child: Container(
+        height: height,
+        width: height * 3.06,
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 5 : 8,
+          vertical: compact ? 3 : 5,
         ),
-        const SizedBox(width: 10),
-        Text(
-          'DARDITO',
-          style: TextStyle(
-            fontSize: compact ? 20 : 25,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -.8,
-            color: color,
-          ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(compact ? 11 : 15),
         ),
-        Container(
-          width: 6,
-          height: 6,
-          margin: const EdgeInsets.only(left: 3, top: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.yellow,
-            shape: BoxShape.circle,
-          ),
+        child: Image.asset(
+          'assets/brand/mhdlp_logo_horizontal.jpg',
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+          excludeFromSemantics: true,
         ),
-      ],
+      ),
     );
   }
 }

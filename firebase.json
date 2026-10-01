@@ -29,7 +29,10 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "terminos_y_politicas/**",
+      "condiciones_del_servicio/**",
+      "eliminacion_de_datos/**"
     ],
     "headers": [
       {
@@ -80,9 +83,44 @@
     ],
     "rewrites": [
       {
+        "source": "/historias/**",
+        "function": {
+          "functionId": "publicStoryPage",
+          "region": "southamerica-east1"
+        }
+      },
+      {
+        "source": "/api/story-images/**",
+        "function": {
+          "functionId": "publicStoryImage",
+          "region": "southamerica-east1"
+        }
+      },
+      {
+        "source": "/sitemap.xml",
+        "function": {
+          "functionId": "publicSitemap",
+          "region": "southamerica-east1"
+        }
+      },
+      {
+        "source": "/api/stories",
+        "function": {
+          "functionId": "publicStories",
+          "region": "southamerica-east1"
+        }
+      },
+      {
+        "source": "/api/catalogs",
+        "function": {
+          "functionId": "publicCatalogs",
+          "region": "southamerica-east1"
+        }
+      },
+      {
         "source": "/api/chat",
         "function": {
-          "functionId": "darditoChat",
+          "functionId": "darditoChatPreproduction",
           "region": "southamerica-east1"
         }
       },
@@ -94,11 +132,36 @@
         }
       },
       {
+        "source": "/api/story-likes",
+        "function": {
+          "functionId": "storyLikes",
+          "region": "southamerica-east1"
+        }
+      },
+      {
+        "source": "/api/access",
+        "function": {
+          "functionId": "userAccessStatus",
+          "region": "southamerica-east1"
+        }
+      },
+      {
         "source": "/api/profile",
         "function": {
           "functionId": "upsertUserProfile",
           "region": "southamerica-east1"
         }
+      },
+      {
+        "source": "/api/usage",
+        "function": {
+          "functionId": "usageAnalytics",
+          "region": "southamerica-east1"
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
       }
     ]
   },

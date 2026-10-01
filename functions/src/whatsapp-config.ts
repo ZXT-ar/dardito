@@ -7,5 +7,5 @@ export const whatsappPhoneNumberId = defineSecret("WHATSAPP_PHONE_NUMBER_ID");
 export const whatsappAppSecret = defineSecret("WHATSAPP_APP_SECRET");
 
 export const whatsappGraphVersion = defineString("WHATSAPP_GRAPH_VERSION", {
-  default: "v23.0",
+  default: "v25.0",
 });

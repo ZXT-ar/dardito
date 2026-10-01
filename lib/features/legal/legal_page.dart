@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/ui.dart';
 
-enum LegalDocument { terms, privacy }
+enum LegalDocument { terms }
 
-class LegalPage extends StatefulWidget {
+class LegalPage extends StatelessWidget {
   const LegalPage({
     super.key,
     required this.initialDocument,
@@ -16,21 +17,8 @@ class LegalPage extends StatefulWidget {
   final VoidCallback onBack;
 
   @override
-  State<LegalPage> createState() => _LegalPageState();
-}
-
-class _LegalPageState extends State<LegalPage> {
-  late LegalDocument _document;
-
-  @override
-  void initState() {
-    super.initState();
-    _document = widget.initialDocument;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final isTerms = _document == LegalDocument.terms;
+    assert(initialDocument == LegalDocument.terms);
     return Material(
       color: AppColors.cream,
       child: SingleChildScrollView(
@@ -47,45 +35,80 @@ class _LegalPageState extends State<LegalPage> {
                 ),
               ),
               child: MaxWidth(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextButton.icon(
-                      onPressed: widget.onBack,
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.cream,
-                      ),
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      label: const Text('Volver a Dardito'),
-                    ),
-                    const SizedBox(height: 26),
-                    const SectionEyebrow('Centro legal', light: true),
-                    const SizedBox(height: 18),
-                    Text(
-                      'Reglas claras para cuidar\nlas historias de todos.',
-                      style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                        color: AppColors.cream,
-                        fontSize: MediaQuery.sizeOf(context).width < 600
-                            ? 44
-                            : 62,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 680),
-                      child: Text(
-                        'Transparencia, respeto y responsabilidad editorial para construir un mapa confiable de la memoria de La Plata.',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppColors.cream.withValues(alpha: .72),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final narrow = constraints.maxWidth < 900;
+                    final copy = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextButton.icon(
+                          onPressed: onBack,
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.cream,
+                          ),
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          label: const Text('Volver al mapa'),
+                        ),
+                        const SizedBox(height: 26),
+                        const SectionEyebrow('Centro legal', light: true),
+                        const SizedBox(height: 18),
+                        Text(
+                          'Reglas claras para cuidar\nlas historias de todos.',
+                          style: Theme.of(context).textTheme.displayLarge
+                              ?.copyWith(
+                                color: AppColors.cream,
+                                fontSize: MediaQuery.sizeOf(context).width < 600
+                                    ? 44
+                                    : 62,
+                              ),
+                        ),
+                        const SizedBox(height: 18),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 680),
+                          child: Text(
+                            'Transparencia, respeto y responsabilidad editorial para construir un mapa confiable de la memoria de La Plata.',
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  color: AppColors.cream.withValues(alpha: .72),
+                                ),
+                          ),
+                        ),
+                        const SizedBox(height: 34),
+                        const _DocumentLabel(),
+                      ],
+                    );
+                    final artwork = Semantics(
+                      image: true,
+                      label:
+                          'Dardito presenta un documento con los términos y condiciones',
+                      child: SizedBox(
+                        height: narrow ? 330 : 460,
+                        child: Image.asset(
+                          'assets/brand/dardito_legal_document_v1.png',
+                          fit: BoxFit.contain,
+                          alignment: Alignment.bottomCenter,
+                          filterQuality: FilterQuality.high,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 34),
-                    _DocumentSwitch(
-                      value: _document,
-                      onChanged: (value) => setState(() => _document = value),
-                    ),
-                  ],
+                    );
+                    return narrow
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              copy,
+                              const SizedBox(height: 36),
+                              Center(child: artwork),
+                            ],
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Expanded(flex: 7, child: copy),
+                              const SizedBox(width: 28),
+                              Expanded(flex: 4, child: artwork),
+                            ],
+                          );
+                  },
                 ),
               ),
             ),
@@ -95,40 +118,19 @@ class _LegalPageState extends State<LegalPage> {
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final wide = constraints.maxWidth >= 900;
-                    final metadata = _LegalMetadata(isTerms: isTerms);
-                    final body = AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 380),
-                      switchInCurve: Curves.easeOutCubic,
-                      transitionBuilder: (child, animation) => FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween(
-                            begin: const Offset(.025, 0),
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: child,
-                        ),
-                      ),
-                      child: _LegalDocumentBody(
-                        key: ValueKey(_document),
-                        document: _document,
-                      ),
-                    );
+                    const metadata = _LegalMetadata();
+                    const body = _LegalDocumentBody();
                     return wide
-                        ? Row(
+                        ? const Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               SizedBox(width: 285, child: metadata),
-                              const SizedBox(width: 54),
+                              SizedBox(width: 54),
                               Expanded(child: body),
                             ],
                           )
-                        : Column(
-                            children: [
-                              metadata,
-                              const SizedBox(height: 34),
-                              body,
-                            ],
+                        : const Column(
+                            children: [metadata, SizedBox(height: 34), body],
                           );
                   },
                 ),
@@ -142,10 +144,8 @@ class _LegalPageState extends State<LegalPage> {
   }
 }
 
-class _DocumentSwitch extends StatelessWidget {
-  const _DocumentSwitch({required this.value, required this.onChanged});
-  final LegalDocument value;
-  final ValueChanged<LegalDocument> onChanged;
+class _DocumentLabel extends StatelessWidget {
+  const _DocumentLabel();
 
   @override
   Widget build(BuildContext context) => Container(
@@ -155,73 +155,30 @@ class _DocumentSwitch extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: Colors.white.withValues(alpha: .12)),
     ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _SwitchOption(
-          label: 'Términos y condiciones',
-          icon: Icons.gavel_rounded,
-          selected: value == LegalDocument.terms,
-          onTap: () => onChanged(LegalDocument.terms),
-        ),
-        _SwitchOption(
-          label: 'Privacidad',
-          icon: Icons.shield_outlined,
-          selected: value == LegalDocument.privacy,
-          onTap: () => onChanged(LegalDocument.privacy),
-        ),
-      ],
-    ),
-  );
-}
-
-class _SwitchOption extends StatelessWidget {
-  const _SwitchOption({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(15),
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
+    child: Container(
       padding: EdgeInsets.symmetric(
         horizontal: MediaQuery.sizeOf(context).width < 500 ? 12 : 20,
         vertical: 14,
       ),
       decoration: BoxDecoration(
-        color: selected ? AppColors.yellow : Colors.transparent,
+        color: AppColors.yellow,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: selected
-            ? [
-                BoxShadow(
-                  color: AppColors.yellow.withValues(alpha: .25),
-                  blurRadius: 18,
-                ),
-              ]
-            : null,
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: selected ? AppColors.ink : AppColors.cream,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.yellow.withValues(alpha: .25),
+            blurRadius: 18,
           ),
-          const SizedBox(width: 8),
+        ],
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.gavel_rounded, size: 18, color: AppColors.ink),
+          SizedBox(width: 8),
           Text(
-            label,
+            'Términos y condiciones',
             style: TextStyle(
-              color: selected ? AppColors.ink : AppColors.cream,
+              color: AppColors.ink,
               fontSize: 12,
               fontWeight: FontWeight.w900,
             ),
@@ -233,82 +190,50 @@ class _SwitchOption extends StatelessWidget {
 }
 
 class _LegalMetadata extends StatelessWidget {
-  const _LegalMetadata({required this.isTerms});
-  final bool isTerms;
+  const _LegalMetadata();
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          color: AppColors.paper,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppColors.line),
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(22),
+    decoration: BoxDecoration(
+      color: AppColors.paper,
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: AppColors.line),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: AppColors.yellow.withValues(alpha: .16),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: const Icon(Icons.description_outlined),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.yellow.withValues(alpha: .16),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Icon(
-                isTerms
-                    ? Icons.description_outlined
-                    : Icons.lock_outline_rounded,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              isTerms ? 'Documento de uso' : 'Documento de privacidad',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            const _MetadataRow(label: 'Versión', value: 'Borrador 1.0'),
-            const _MetadataRow(label: 'Actualización', value: '21/07/2026'),
-            const _MetadataRow(label: 'Responsable', value: 'Dardito'),
-            const _MetadataRow(
-              label: 'Jurisdicción',
-              value: 'La Plata, Argentina',
-            ),
-          ],
+        const SizedBox(height: 18),
+        Text('Documento de uso', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16),
+        const _MetadataRow(label: 'Versión', value: '1.0'),
+        const _MetadataRow(label: 'Actualización', value: '02/09/2026'),
+        const _MetadataRow(
+          label: 'Responsable',
+          value: 'El Mapa de las Historias de La Plata',
         ),
-      ),
-      const SizedBox(height: 16),
-      Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppColors.yellow.withValues(alpha: .13),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: const Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.info_outline_rounded, size: 19),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Texto operativo preliminar. Requiere validación jurídica antes del lanzamiento público.',
-                style: TextStyle(fontSize: 12, height: 1.45),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ],
+        const _MetadataRow(label: 'Jurisdicción', value: 'La Plata, Argentina'),
+      ],
+    ),
   );
 }
 
 class _MetadataRow extends StatelessWidget {
   const _MetadataRow({required this.label, required this.value});
+
   final String label;
   final String value;
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
@@ -332,44 +257,34 @@ class _MetadataRow extends StatelessWidget {
 }
 
 class _LegalDocumentBody extends StatelessWidget {
-  const _LegalDocumentBody({super.key, required this.document});
-  final LegalDocument document;
+  const _LegalDocumentBody();
 
   @override
-  Widget build(BuildContext context) {
-    final terms = document == LegalDocument.terms;
-    final sections = terms ? _termsSections : _privacySections;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionEyebrow(
-          terms ? 'Condiciones del servicio' : 'Tratamiento de datos',
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SectionEyebrow('Condiciones del servicio'),
+      const SizedBox(height: 14),
+      Text(
+        'Términos y condiciones',
+        style: Theme.of(context).textTheme.displayMedium,
+      ),
+      const SizedBox(height: 14),
+      Text(
+        'Al enviar una historia, relato, testimonio, recuerdo, tradición oral, memoria comunitaria, documento, fotografía, archivo, enlace, material audiovisual u otro contenido a través de esta plataforma, la persona usuaria declara haber leído y aceptado los presentes Términos y Condiciones.',
+        style: Theme.of(
+          context,
+        ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
+      ),
+      const SizedBox(height: 36),
+      for (var i = 0; i < _termsSections.length; i++)
+        _LegalSection(
+          number: (i + 1).toString().padLeft(2, '0'),
+          title: _termsSections[i].$1,
+          body: _termsSections[i].$2,
         ),
-        const SizedBox(height: 14),
-        Text(
-          terms ? 'Términos y condiciones' : 'Política de privacidad',
-          style: Theme.of(context).textTheme.displayMedium,
-        ),
-        const SizedBox(height: 14),
-        Text(
-          terms
-              ? 'Estos términos regulan el acceso y uso de Dardito, el Mapa de las Historias de La Plata y sus canales asociados.'
-              : 'Esta política explica qué información se solicita, para qué se utiliza y qué decisiones conservan las personas sobre sus datos.',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
-        ),
-        const SizedBox(height: 36),
-        for (var i = 0; i < sections.length; i++)
-          _LegalSection(
-            number: (i + 1).toString().padLeft(2, '0'),
-            title: sections[i].$1,
-            body: sections[i].$2,
-            bullets: sections[i].$3,
-          ),
-      ],
-    );
-  }
+    ],
+  );
 }
 
 class _LegalSection extends StatelessWidget {
@@ -377,12 +292,11 @@ class _LegalSection extends StatelessWidget {
     required this.number,
     required this.title,
     required this.body,
-    required this.bullets,
   });
+
   final String number;
   final String title;
   final String body;
-  final List<String> bullets;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -427,31 +341,6 @@ class _LegalSection extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(body, style: const TextStyle(height: 1.6, color: AppColors.muted)),
-        if (bullets.isNotEmpty) ...[
-          const SizedBox(height: 14),
-          for (final bullet in bullets)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 9),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    margin: const EdgeInsets.only(top: 7),
-                    decoration: const BoxDecoration(
-                      color: AppColors.yellow,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Text(bullet, style: const TextStyle(height: 1.45)),
-                  ),
-                ],
-              ),
-            ),
-        ],
       ],
     ),
   );
@@ -459,123 +348,130 @@ class _LegalSection extends StatelessWidget {
 
 class _LegalFooter extends StatelessWidget {
   const _LegalFooter();
+
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
     color: AppColors.ink,
     padding: const EdgeInsets.symmetric(vertical: 38),
-    child: const MaxWidth(
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        runSpacing: 18,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          DarditoMark(light: true),
-          Text(
-            'Consultas legales y de privacidad\nlegal@dardito.ar · Documento preliminar',
-            textAlign: TextAlign.right,
-            style: TextStyle(color: Colors.white60),
-          ),
-        ],
+    child: MaxWidth(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final mobile = constraints.maxWidth < 650;
+          final details = Column(
+            crossAxisAlignment: mobile
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.end,
+            children: [
+              Text(
+                'Consultas legales\nlegal@dardito.ar',
+                textAlign: mobile ? TextAlign.left : TextAlign.right,
+                style: const TextStyle(color: Colors.white60, height: 1.5),
+              ),
+              const SizedBox(height: 8),
+              const _SimbiosisDigitalLink(),
+            ],
+          );
+          return mobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const ProjectMark(light: true),
+                    const SizedBox(height: 24),
+                    details,
+                  ],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const ProjectMark(light: true),
+                    const SizedBox(width: 32),
+                    const Spacer(),
+                    Flexible(child: details),
+                  ],
+                );
+        },
       ),
     ),
   );
 }
 
-const _termsSections = <(String, String, List<String>)>[
-  (
-    'Aceptación y alcance',
-    'El acceso a Dardito implica la aceptación de estas condiciones. El servicio ofrece una experiencia cultural, turística y comunitaria destinada a descubrir historias vinculadas con la ciudad de La Plata.',
-    [
-      'Las personas deben utilizar la plataforma de manera lícita y respetuosa.',
-      'La disponibilidad de funciones puede cambiar durante las etapas de prueba.',
-    ],
-  ),
-  (
-    'Naturaleza de los contenidos',
-    'Dardito diferencia entre hechos documentados, interpretaciones, tradición oral y aportes de la comunidad. La clasificación busca aportar contexto y no constituye una certificación absoluta de veracidad.',
-    [
-      'Las leyendas y versiones no verificadas serán identificadas como tales.',
-      'Los contenidos turísticos no reemplazan asesoramiento profesional ni información oficial.',
-    ],
-  ),
-  (
-    'Historias enviadas por la comunidad',
-    'Quien comparte una historia declara que cuenta con autorización suficiente para enviar el texto, las imágenes y la documentación asociada. Todo aporte queda sujeto a revisión antes de una eventual publicación.',
-    [
-      'El envío no garantiza la publicación.',
-      'Dardito podrá solicitar información adicional, editar el contenido o rechazarlo.',
-      'No deben enviarse datos sensibles de terceros sin autorización.',
-    ],
-  ),
-  (
-    'Propiedad intelectual',
-    'Cada persona conserva los derechos que le correspondan sobre el material original enviado. Al autorizar su publicación, concede a Dardito un permiso no exclusivo para reproducirlo, adaptarlo editorialmente y comunicarlo dentro del proyecto.',
-    [
-      'Las fuentes y autorías disponibles serán reconocidas.',
-      'Los usos comerciales o cesiones adicionales requerirán acuerdos específicos cuando corresponda.',
-    ],
-  ),
-  (
-    'Conductas no permitidas',
-    'No está permitido utilizar la plataforma para vulnerar derechos, acosar personas, difundir información manifiestamente falsa como hecho documentado o interferir con la seguridad y el funcionamiento del sistema.',
-    [
-      'Se podrán suspender aportes o accesos ante incumplimientos.',
-      'Los contenidos sensibles podrán requerir revisión reforzada.',
-    ],
-  ),
-  (
-    'Cambios, contacto y vigencia',
-    'Las condiciones podrán actualizarse para reflejar nuevas funciones, obligaciones o criterios editoriales. La versión vigente indicará su fecha de actualización y estará disponible desde el footer de la aplicación.',
-    [],
-  ),
-];
+class _SimbiosisDigitalLink extends StatelessWidget {
+  const _SimbiosisDigitalLink();
 
-const _privacySections = <(String, String, List<String>)>[
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: () async {
+      await launchUrl(
+        Uri.parse('https://simbiosisdigital.com.ar'),
+        mode: LaunchMode.externalApplication,
+      );
+    },
+    child: const Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Text(
+        'Desarrollado por SimbiosisDigital',
+        style: TextStyle(color: Colors.white60, fontSize: 12),
+      ),
+    ),
+  );
+}
+
+const _termsSections = <(String, String)>[
   (
-    'Responsable y principios',
-    'Dardito administrará la información bajo criterios de finalidad, minimización, seguridad y transparencia. Solo se solicitarán datos razonablemente necesarios para prestar el servicio y revisar aportes.',
-    [],
+    'Envío de aportes',
+    'La persona usuaria podrá remitir historias, relatos, testimonios, recuerdos, tradiciones orales, memorias comunitarias, referencias históricas, culturales o patrimoniales, fotografías, documentos, archivos, enlaces, fuentes u otros contenidos que considere de interés para su eventual incorporación al proyecto. El envío de un aporte no implica su publicación automática ni genera obligación alguna para la plataforma de incorporarlo, difundirlo o mantenerlo publicado.',
   ),
   (
-    'Información que podemos solicitar',
-    'Al iniciar sesión o enviar una historia podremos recibir datos de identificación, contacto, contenido aportado y datos técnicos básicos de la interacción.',
-    [
-      'Nombre, correo electrónico e identificador del proveedor OAuth.',
-      'Textos, ubicaciones, imágenes o documentos enviados voluntariamente.',
-      'Registros técnicos necesarios para seguridad, diagnóstico y prevención de abuso.',
-    ],
+    'Legitimidad del aporte',
+    'La persona usuaria declara que la información, relato, recuerdo, testimonio, tradición oral, memoria comunitaria o referencia que envía corresponde a contenidos que conoce, ha recibido, recopilado o se encuentra legítimamente habilitada para compartir. No se exige que la persona aportante sea autora o titular de derechos exclusivos sobre los hechos, relatos de tradición oral, recuerdos, acontecimientos históricos, leyendas, referencias culturales o contenidos de carácter comunitario que comunique. Cuando el aporte incluya obras, fotografías, documentos, grabaciones, textos, archivos u otros materiales concretos pertenecientes o atribuibles a terceros, la persona usuaria declara que cuenta con autorización para compartirlos o que su utilización resulta legítima. La persona usuaria se compromete a no enviar materiales cuya utilización sepa que vulnera derechos de autor, derechos de imagen, privacidad u otros derechos de terceros.',
   ),
   (
-    'Finalidades del tratamiento',
-    'La información será utilizada para autenticar a la persona, gestionar el aporte, comunicarnos durante la revisión, moderar contenidos y mejorar la seguridad y calidad del servicio.',
-    [
-      'No se publicará el correo electrónico de quien aporta una historia.',
-      'No se utilizarán datos para finalidades incompatibles sin información y consentimiento cuando corresponda.',
-    ],
+    'Autorización para revisión y tratamiento editorial',
+    'Mediante la aceptación de estos Términos y Condiciones, la persona usuaria autoriza expresamente al equipo responsable de la plataforma a acceder, leer, analizar, verificar, clasificar, organizar, resumir, corregir, adaptar y revisar editorialmente el contenido enviado, con el objeto de evaluar su eventual incorporación al proyecto. La revisión podrá comprender, entre otras tareas: verificación de datos; corrección de errores; adecuación de redacción o extensión; elaboración de versiones resumidas o desarrolladas; clasificación temática; incorporación de palabras clave; identificación de referencias temporales o territoriales; georreferenciación; contraste con otras fuentes; vinculación con otras historias o contenidos; incorporación de referencias o información complementaria. La revisión, modificación o adaptación editorial no implica necesariamente que el contenido vaya a ser publicado.',
   ),
   (
-    'Proveedores y transferencias',
-    'La operación podrá requerir proveedores de autenticación, alojamiento, almacenamiento, analítica o mensajería. Cada integración deberá limitarse a la información necesaria y contar con condiciones adecuadas de protección.',
-    [
-      'Google y Apple actuarán según sus propias políticas durante OAuth.',
-      'La lista definitiva de encargados se publicará antes del lanzamiento.',
-    ],
+    'Autorización para utilización y publicación',
+    'Cuando el aporte resulte seleccionado, la persona usuaria autoriza a la plataforma a utilizar, reproducir, adaptar, resumir, editar, comunicar y poner a disposición el contenido aportado dentro del sitio, aplicaciones, mapas, herramientas conversacionales y demás medios digitales vinculados al proyecto. La autorización se concede de manera no exclusiva y gratuita y se limita a las finalidades informativas, culturales, históricas, patrimoniales, educativas y de difusión propias del proyecto. La plataforma podrá decidir no publicar un contenido, retirarlo de la publicación, archivarlo o modificar su forma de presentación cuando resulte necesario por razones editoriales, técnicas, legales, de verificación o de funcionamiento del proyecto.',
   ),
   (
-    'Conservación y seguridad',
-    'Los datos serán conservados durante el tiempo necesario para revisar historias, cumplir obligaciones y proteger la plataforma. Se aplicarán controles técnicos y organizativos proporcionales al tipo de información.',
-    [
-      'Los aportes rechazados tendrán una política de eliminación definida.',
-      'Los documentos e imágenes se almacenarán de forma privada durante la revisión.',
-    ],
+    'Carácter gratuito del aporte',
+    'El envío de historias, relatos, testimonios, documentos, fotografías, archivos u otros contenidos a través de la plataforma se realiza de manera voluntaria y gratuita. La persona usuaria reconoce que el aporte no genera derecho a percibir honorarios, regalías, participaciones, compensaciones, premios, retribuciones económicas ni ningún otro tipo de beneficio patrimonial por su recepción, revisión, adaptación, incorporación, publicación o utilización dentro del proyecto. La eventual mención del nombre de la persona aportante tendrá carácter meramente identificatorio o de reconocimiento y no implicará relación laboral, comercial, societaria ni derecho económico alguno frente a la plataforma o sus responsables.',
   ),
   (
-    'Decisiones de las personas',
-    'Las personas podrán solicitar acceso, actualización, corrección o eliminación de sus datos y retirar consentimientos cuando resulte aplicable. El canal formal será informado antes de la puesta en producción.',
-    [
-      'Las solicitudes requerirán validación razonable de identidad.',
-      'También será posible consultar por el estado de una historia enviada.',
-    ],
+    'Materiales de terceros',
+    'Cuando el aporte incluya fotografías, documentos, recortes, grabaciones, textos, archivos u otros materiales identificables como obras o contenidos de terceros, el equipo podrá solicitar información sobre su origen, autoría, fuente o condiciones de utilización antes de decidir su publicación. La sola comunicación de una historia, recuerdo, tradición oral, leyenda, hecho histórico o información de conocimiento comunitario no queda sujeta a esta exigencia por el solo hecho de haber sido previamente transmitida por otras personas. La plataforma podrá optar por utilizar únicamente la información contenida en el aporte sin publicar el documento, fotografía, archivo o material adjunto que la acompaña.',
+  ),
+  (
+    'Datos personales y autorización de contacto',
+    'Para efectuar un aporte podrán solicitarse determinados datos personales y de contacto, incluyendo una dirección de correo electrónico. La persona usuaria autoriza expresamente al equipo responsable del proyecto a contactarla mediante la dirección de correo electrónico informada en relación con el aporte realizado. El contacto podrá efectuarse, entre otros motivos, para: solicitar aclaraciones; ampliar información; verificar datos, hechos o fuentes; consultar sobre el origen del relato o del material; solicitar documentación complementaria; efectuar consultas vinculadas con derechos de terceros; informar cuestiones relacionadas con la evaluación o eventual publicación del aporte. La dirección de correo electrónico y los demás datos de contacto no serán publicados como parte de la historia ni puestos a disposición del público, salvo autorización expresa de la persona usuaria. Dicha autorización habilita al equipo responsable del proyecto a publicar total o parcialmente los datos de contacto informados, cuando lo considere pertinente, sin que ello genere obligación alguna de hacerlo.',
+  ),
+  (
+    'Nombre de la persona aportante',
+    'La persona usuaria autoriza a que su nombre pueda ser mencionado o publicado en relación con el aporte enviado cuando el equipo responsable del proyecto considere pertinente identificar su colaboración, testimonio, aporte o autoría. Esta autorización no implica obligación alguna para la plataforma de publicar el nombre de la persona aportante. El contenido podrá ser difundido con identificación de quien realizó el aporte, sin identificación o bajo otra modalidad de reconocimiento editorial que resulte adecuada. Los datos de contacto de la persona aportante no serán publicados por el solo hecho de que se publique su nombre.',
+  ),
+  (
+    'Revisión, contraste y verificación de los contenidos',
+    'La persona usuaria reconoce que los contenidos enviados pueden ser sometidos a procesos de revisión, contraste, investigación o verificación antes o después de su publicación. La plataforma podrá comparar la información con documentos, publicaciones, archivos, fuentes bibliográficas, testimonios, otras historias o antecedentes disponibles. La recepción o publicación de un contenido no implica que la plataforma certifique como verdadero cada uno de los hechos relatados ni que adhiera a las opiniones, interpretaciones, creencias o versiones transmitidas por la persona aportante. Cuando la naturaleza del contenido corresponda a tradición oral, memoria comunitaria, leyenda, testimonio u otra fuente de naturaleza similar, podrá ser identificado o presentado como tal.',
+  ),
+  (
+    'Contenidos que no deberán enviarse',
+    'La persona usuaria se compromete a no enviar contenidos que: a) sean manifiestamente ilícitos; b) vulneren intencionalmente derechos de terceros; c) contengan datos personales cuya divulgación resulte ilegítima; d) incluyan amenazas, incitación a la violencia o expresiones manifiestamente discriminatorias; e) atribuyan delitos o hechos gravemente lesivos a personas identificadas o identificables sin elementos que permitan un adecuado análisis editorial; f) incluyan material obtenido de manera ilícita; g) contengan información cuya difusión pueda afectar ilegítimamente la intimidad, imagen, honor u otros derechos de terceros. La plataforma podrá rechazar, no publicar, modificar, suspender o retirar contenidos que considere incompatibles con estos criterios.',
+  ),
+  (
+    'Fuentes e información complementaria',
+    'La persona usuaria podrá indicar las fuentes, referencias, documentos o antecedentes en los que basa su aporte. La plataforma podrá incorporar, contrastar o complementar el contenido mediante otras fuentes. La inclusión de una fuente o referencia aportada por la persona usuaria no implica necesariamente que dicha fuente vaya a ser publicada íntegramente ni que sea considerada suficiente para validar la totalidad del contenido.',
+  ),
+  (
+    'Conservación del aporte',
+    'Los aportes y los materiales asociados podrán conservarse durante el tiempo necesario para su recepción, evaluación, revisión, verificación, documentación, eventual publicación, archivo y trazabilidad editorial. La circunstancia de que un contenido no sea publicado, sea retirado de la visualización pública o sea archivado no implica necesariamente su eliminación inmediata de los registros internos de la plataforma.',
+  ),
+  (
+    'Ausencia de obligación de publicación',
+    'La recepción de un aporte no genera derecho a exigir su publicación, permanencia, ubicación específica dentro del mapa o la plataforma, forma de presentación, extensión, reconocimiento de autoría o mención de la persona aportante. Las decisiones de selección, edición, clasificación, presentación, publicación, archivo o retiro corresponden al equipo responsable del proyecto.',
+  ),
+  (
+    'Aceptación de los Términos y Condiciones',
+    'La marcación de la casilla correspondiente y el posterior envío del formulario implican la lectura y aceptación expresa de los presentes Términos y Condiciones. La persona usuaria declara comprender que su aporte podrá ser revisado y modificado antes de su eventual publicación y que la plataforma decidirá en cada caso si corresponde incorporarlo al proyecto.',
   ),
 ];

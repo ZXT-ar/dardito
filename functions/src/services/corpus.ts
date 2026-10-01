@@ -1,7 +1,9 @@
+import {evidenceEntry} from "../domain/editorial-catalogs.js";
 import {getFirestore} from "firebase-admin/firestore";
 
 import type {CorpusMode} from "../domain/guardrails.js";
 import type {CorpusItem} from "../domain/types.js";
+import {catalogEntry, loadEditorialCatalogs, type EditorialCatalogs} from "../domain/editorial-catalogs.js";
 
 const maxStoredCorpus = 100;
 const maxContextItems = 6;
@@ -46,9 +48,9 @@ function score(item: CorpusItem, query: Set<string>): number {
   return total;
 }
 
-function parseStoredCorpus(id: string, raw: FirebaseFirestore.DocumentData): CorpusItem | null {
+function parseStoredCorpus(id: string, raw: FirebaseFirestore.DocumentData, catalogs: EditorialCatalogs): CorpusItem | null {
   const evidence = raw.evidence;
-  if (!["documented", "oral_tradition", "community"].includes(evidence)) {
+  if (typeof evidence !== "string" || !/^[a-z0-9_-]{1,80}$/.test(evidence)) {
     return null;
   }
   if (typeof raw.title !== "string" || typeof raw.body !== "string") {
@@ -64,6 +66,7 @@ function parseStoredCorpus(id: string, raw: FirebaseFirestore.DocumentData): Cor
     neighborhood: typeof raw.neighborhood === "string" ? raw.neighborhood : "La Plata",
     period: typeof raw.period === "string" ? raw.period : undefined,
     evidence,
+    evidenceLabel: evidenceEntry(evidence)?.label ?? evidence,
     sourceName: typeof raw.sourceName === "string" ? raw.sourceName : undefined,
     sourceUrl: typeof raw.sourceUrl === "string" ? raw.sourceUrl : undefined,
     keywords: Array.isArray(raw.keywords)
@@ -78,14 +81,13 @@ export async function retrieveCorpus(
   inlineCorpus: CorpusItem[] = [],
   mode: Exclude<CorpusMode, "none"> = "search",
 ): Promise<CorpusItem[]> {
-  const snapshot = await getFirestore()
-    .collection("knowledge")
-    .where("status", "==", "published")
-    .limit(maxStoredCorpus)
-    .get();
+  const [snapshot, catalogs] = await Promise.all([
+    getFirestore().collection("knowledge").where("status", "==", "published").limit(maxStoredCorpus).get(),
+    loadEditorialCatalogs(),
+  ]);
 
   const stored = snapshot.docs
-    .map((doc) => parseStoredCorpus(doc.id, doc.data()))
+    .map((doc) => parseStoredCorpus(doc.id, doc.data(), catalogs))
     .filter((item): item is CorpusItem => item !== null);
 
   const unique = new Map<string, CorpusItem>();

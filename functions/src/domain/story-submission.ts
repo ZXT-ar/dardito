@@ -1,29 +1,13 @@
+import {evidenceEntry as resolveEvidenceEntry} from "./editorial-catalogs.js";
 import {classifyModeration} from "./moderation-policy.js";
+import {catalogEntry, defaultCatalogs, type EditorialCatalogs} from "./editorial-catalogs.js";
 
 export const storyTitleMaxLength = 25;
 export const storyBodyMaxLength = 2_500;
+export const storyPeriodMaxLength = 100;
 export const maxPhotoCount = 3;
 export const maxPhotoBytes = 8 * 1024 * 1024;
 export const maxTotalPhotoBytes = 20 * 1024 * 1024;
-
-const categories = new Set([
-  "architecture",
-  "mystery",
-  "culture",
-  "neighborhood",
-  "memory",
-]);
-
-const neighborhoods = new Set([
-  "Casco Urbano",
-  "Plaza Moreno",
-  "Centro",
-  "Gonnet",
-  "Meridiano V",
-  "Tolosa",
-  "El Bosque",
-  "City Bell",
-]);
 
 const sensitivePatterns: Array<{label: string; expression: RegExp}> = [
   {
@@ -46,6 +30,8 @@ export interface StorySubmissionInput {
   story: string;
   category: string;
   neighborhood: string;
+  period: string;
+  evidence: string;
   materialConsent: boolean;
   legalConsent: boolean;
   contactConsent: boolean;
@@ -77,7 +63,7 @@ function plainText(value: unknown, maxLength: number): string {
     .slice(0, maxLength + 1);
 }
 
-export function parseStorySubmission(body: unknown): StorySubmissionInput {
+export function parseStorySubmission(body: unknown, catalogs: EditorialCatalogs = defaultCatalogs): StorySubmissionInput {
   const data = body && typeof body === "object"
     ? body as Record<string, unknown>
     : {};
@@ -86,6 +72,11 @@ export function parseStorySubmission(body: unknown): StorySubmissionInput {
   const story = plainText(data.story, storyBodyMaxLength);
   const category = plainText(data.category, 40);
   const neighborhood = plainText(data.neighborhood, 80);
+  const period = plainText(data.period, storyPeriodMaxLength);
+  const evidence = plainText(data.evidence, 30);
+  const categoryEntry = catalogEntry(catalogs.categories, category);
+  const neighborhoodEntry = catalogEntry(catalogs.neighborhoods, neighborhood);
+  const evidenceEntry = resolveEvidenceEntry(evidence);
   const rawPhotoPaths = Array.isArray(data.photoPaths) ? data.photoPaths : [];
   const photoPaths = rawPhotoPaths
     .filter((value): value is string => typeof value === "string")
@@ -97,10 +88,14 @@ export function parseStorySubmission(body: unknown): StorySubmissionInput {
     title.length > storyTitleMaxLength ||
     story.length < 30 ||
     story.length > storyBodyMaxLength ||
-    !categories.has(category) ||
-    !neighborhoods.has(neighborhood) ||
+    !categoryEntry ||
+    !neighborhoodEntry ||
+    period.length < 2 ||
+    period.length > storyPeriodMaxLength ||
+    !evidenceEntry ||
     data.materialConsent !== true ||
     data.legalConsent !== true ||
+    data.contactConsent !== true ||
     photoPaths.length > maxPhotoCount ||
     new Set(photoPaths).size !== photoPaths.length
   ) {
@@ -144,11 +139,13 @@ export function parseStorySubmission(body: unknown): StorySubmissionInput {
     submissionId,
     title,
     story,
-    category,
-    neighborhood,
+    category: categoryEntry.id,
+    neighborhood: neighborhoodEntry.label,
+    period,
+    evidence: evidence === "oral_tradition" ? evidence : evidenceEntry.id,
     materialConsent: true,
     legalConsent: true,
-    contactConsent: data.contactConsent === true,
+    contactConsent: true,
     photoPaths,
     client,
   };

@@ -6,12 +6,48 @@ setGlobalOptions({region, maxInstances: 20});
 
 export {
   darditoChat,
+  darditoChatPreproduction,
   health,
+  publicSitemap,
+  publicStoryImage,
+  publicStoryPage,
+  publicStories,
+  publicCatalogs,
   submitStory,
   upsertKnowledge,
   upsertUserProfile,
+  userAccessStatus,
+  storyLikes,
+  usageAnalytics,
 } from "./channels/http.js";
-export {verifyMppAccess} from "./channels/mpp.js";
+export {
+  activateEditorialAccess,
+  adminGetDarditoParameters,
+  adminGetCatalogs,
+  adminGetInfrastructureStatus,
+  adminGetKnowledge,
+  adminGetUsageMetrics,
+  adminGeneralReport,
+  adminCreateResource,
+  adminDeleteResource,
+  adminDiscardResourceUpload,
+  adminExtractDocumentStories,
+  adminExportAuditReport,
+  adminFinalizeResource,
+  adminListAudit,
+  adminListEditorialUsers,
+  adminListKnowledge,
+  adminListResources,
+  adminListSubmissions,
+  adminQueryAudit,
+  adminRegisterSession,
+  adminReviewSubmission,
+  adminSaveCatalogs,
+  adminSaveDarditoParameters,
+  adminSaveKnowledge,
+  adminSetEditorialAccess,
+  adminTransitionKnowledge,
+  adminUpdateResource,
+} from "./channels/admin.js";
 
-// WhatsApp remains implemented but is intentionally not exported until the
-// Meta credentials are configured.
+export {processWhatsAppInbound, whatsappWebhook} from "./channels/whatsapp.js";

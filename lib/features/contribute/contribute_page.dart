@@ -1,13 +1,13 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/auth/auth_service.dart';
+import '../../core/platform/image_file_picker.dart';
 import '../../core/platform/upload_exit_guard.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/ui.dart';
-import '../../data/repositories/story_repository.dart';
+import '../../data/models/story.dart';
 import '../legal/legal_page.dart';
 import 'story_submission_service.dart';
 
@@ -15,12 +15,18 @@ class ContributePage extends StatefulWidget {
   const ContributePage({
     super.key,
     required this.user,
+    required this.neighborhoods,
+    required this.categories,
+    required this.evidenceLevels,
     required this.onSignOut,
     required this.onExplore,
     required this.onOpenLegal,
   });
 
   final AuthUser user;
+  final List<String> neighborhoods;
+  final List<StoryCategory> categories;
+  final List<MapEntry<String, String>> evidenceLevels;
   final VoidCallback onSignOut;
   final VoidCallback onExplore;
   final ValueChanged<LegalDocument> onOpenLegal;
@@ -33,13 +39,14 @@ class _ContributePageState extends State<ContributePage> {
   final _formKey = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _story = TextEditingController();
+  final _period = TextEditingController();
   final _exitGuard = UploadExitGuard();
   final List<SelectedStoryPhoto?> _photos = List.filled(storyPhotoLimit, null);
   String? _category;
   String? _neighborhood;
+  String? _evidence;
   bool _materialConsent = false;
   bool _legalConsent = false;
-  bool _contactConsent = false;
   bool _isSubmitting = false;
   bool _isPickingPhotos = false;
   bool _filePickerNoticeAccepted = false;
@@ -66,6 +73,7 @@ class _ContributePageState extends State<ContributePage> {
     _exitGuard.disable();
     _title.dispose();
     _story.dispose();
+    _period.dispose();
     super.dispose();
   }
 
@@ -113,26 +121,22 @@ class _ContributePageState extends State<ContributePage> {
 
     setState(() => _isPickingPhotos = true);
     try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
+      final result = await pickImageFiles(
         allowMultiple: replaceIndex == null && remaining > 1,
-        withData: true,
       );
       if (result == null || !mounted) return;
 
       final selected = <SelectedStoryPhoto>[];
-      for (final file in result.files.take(remaining)) {
+      for (final file in result.take(remaining)) {
         final bytes = file.bytes;
-        final extension = (file.extension ?? file.name.split('.').last)
-            .toLowerCase();
+        final extension = file.name.split('.').last.toLowerCase();
         final contentType = switch (extension) {
           'png' => 'image/png',
           'webp' => 'image/webp',
           'jpg' || 'jpeg' => 'image/jpeg',
           _ => null,
         };
-        if (bytes == null || contentType == null) {
+        if (contentType == null) {
           _notice('Sólo se admiten imágenes JPG, PNG o WebP.');
           return;
         }
@@ -177,11 +181,9 @@ class _ContributePageState extends State<ContributePage> {
           }
         }
       });
-    } on PlatformException {
+    } on ImageFilePickerException catch (error) {
       if (mounted) {
-        _notice(
-          'No pudimos abrir el explorador. Revisá los permisos e intentá nuevamente.',
-        );
+        _notice(error.message);
       }
     } catch (_) {
       if (mounted) {
@@ -256,41 +258,13 @@ class _ContributePageState extends State<ContributePage> {
     if (_isSubmitting) return;
     if (!_formKey.currentState!.validate()) return;
     if (!_materialConsent || !_legalConsent) {
-      _notice(
-        'Confirmá el permiso del material y aceptá los términos y la privacidad.',
-      );
+      _notice('Para enviar, confirmá obligatoriamente las dos declaraciones.');
       return;
     }
     final matches = _sensitiveMatches();
     if (matches.isNotEmpty) {
       await _showContentWarning(matches);
       return;
-    }
-    var contactConsent = _contactConsent;
-    if (!contactConsent) {
-      final decision = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('¿Podemos contactarte?'),
-          content: Text(
-            'Si aceptás, podremos escribirte a ${widget.user.email} para pedir contexto. '
-            'También podés enviar la historia sin habilitar el contacto.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Enviar sin contacto'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Permitir contacto'),
-            ),
-          ],
-        ),
-      );
-      if (decision == null || !mounted) return;
-      contactConsent = decision;
-      if (decision) setState(() => _contactConsent = true);
     }
     setState(() {
       _isSubmitting = true;
@@ -303,9 +277,10 @@ class _ContributePageState extends State<ContributePage> {
         story: _story.text.trim(),
         category: _category!,
         neighborhood: _neighborhood!,
+        period: _period.text.trim(),
+        evidence: _evidence!,
         materialConsent: _materialConsent,
         legalConsent: _legalConsent,
-        contactConsent: contactConsent,
         photos: _photos.whereType<SelectedStoryPhoto>().toList(),
         clientMetadata: {
           'platform': defaultTargetPlatform.name,
@@ -358,24 +333,28 @@ class _ContributePageState extends State<ContributePage> {
                             formKey: _formKey,
                             title: _title,
                             story: _story,
+                            period: _period,
                             category: _category,
                             neighborhood: _neighborhood,
+                            evidence: _evidence,
                             materialConsent: _materialConsent,
                             legalConsent: _legalConsent,
-                            contactConsent: _contactConsent,
+                            isSubmitting: _isSubmitting,
                             photos: _photos,
+                            neighborhoods: widget.neighborhoods,
+                            categories: widget.categories,
+                            evidenceLevels: widget.evidenceLevels,
                             onCategory: (value) =>
                                 setState(() => _category = value),
                             onNeighborhood: (value) =>
                                 setState(() => _neighborhood = value),
+                            onEvidence: (value) =>
+                                setState(() => _evidence = value),
                             onMaterialConsent: (value) => setState(
                               () => _materialConsent = value ?? false,
                             ),
                             onLegalConsent: (value) =>
                                 setState(() => _legalConsent = value ?? false),
-                            onContactConsent: (value) => setState(
-                              () => _contactConsent = value ?? false,
-                            ),
                             onPickPhotos: () => _pickPhotos(),
                             onEditPhoto: _editPhoto,
                             onOpenLegal: widget.onOpenLegal,
@@ -432,7 +411,7 @@ class _Hero extends StatelessWidget {
             image: true,
             label: 'Dardito escucha con atención tu historia',
             child: Image.asset(
-              'assets/brand/dardito_listening.png',
+              'assets/brand/DarditoListening.png',
               fit: BoxFit.contain,
               alignment: Alignment.bottomCenter,
               filterQuality: FilterQuality.high,
@@ -565,7 +544,7 @@ class _ReviewGuide extends StatelessWidget {
       const _Step(
         '03',
         'Te contactamos',
-        'Sólo si autorizaste el contacto por email.',
+        'Usamos el email con el que te autentificaste.',
       ),
       Container(
         padding: const EdgeInsets.all(18),
@@ -621,17 +600,22 @@ class _ContributionForm extends StatelessWidget {
     required this.formKey,
     required this.title,
     required this.story,
+    required this.period,
     required this.category,
     required this.neighborhood,
+    required this.evidence,
     required this.materialConsent,
     required this.legalConsent,
-    required this.contactConsent,
+    required this.isSubmitting,
     required this.photos,
+    required this.neighborhoods,
+    required this.categories,
+    required this.evidenceLevels,
     required this.onCategory,
     required this.onNeighborhood,
+    required this.onEvidence,
     required this.onMaterialConsent,
     required this.onLegalConsent,
-    required this.onContactConsent,
     required this.onPickPhotos,
     required this.onEditPhoto,
     required this.onOpenLegal,
@@ -640,29 +624,26 @@ class _ContributionForm extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController title;
   final TextEditingController story;
+  final TextEditingController period;
   final String? category;
   final String? neighborhood;
+  final String? evidence;
   final bool materialConsent;
   final bool legalConsent;
-  final bool contactConsent;
+  final bool isSubmitting;
   final List<SelectedStoryPhoto?> photos;
+  final List<String> neighborhoods;
+  final List<StoryCategory> categories;
+  final List<MapEntry<String, String>> evidenceLevels;
   final ValueChanged<String?> onCategory;
   final ValueChanged<String?> onNeighborhood;
+  final ValueChanged<String?> onEvidence;
   final ValueChanged<bool?> onMaterialConsent;
   final ValueChanged<bool?> onLegalConsent;
-  final ValueChanged<bool?> onContactConsent;
   final VoidCallback onPickPhotos;
   final ValueChanged<int> onEditPhoto;
   final ValueChanged<LegalDocument> onOpenLegal;
   final VoidCallback onSubmit;
-
-  static final neighborhoods =
-      LocalStoryRepository()
-          .getAll()
-          .map((item) => item.neighborhood)
-          .toSet()
-          .toList()
-        ..sort();
 
   @override
   Widget build(BuildContext context) => Card(
@@ -690,6 +671,7 @@ class _ContributionForm extends StatelessWidget {
               maxLength: storyTitleLimit,
               inputFormatters: [
                 LengthLimitingTextInputFormatter(storyTitleLimit),
+                _SafeTextFormatter(),
               ],
               validator: (value) => (value?.trim().length ?? 0) < 3
                   ? 'Escribí un título de al menos 3 caracteres'
@@ -709,6 +691,7 @@ class _ContributionForm extends StatelessWidget {
               maxLength: storyBodyLimit,
               inputFormatters: [
                 LengthLimitingTextInputFormatter(storyBodyLimit),
+                _SafeTextFormatter(),
               ],
               validator: (value) => (value?.trim().length ?? 0) < 30
                   ? 'Contanos un poco más (al menos 30 caracteres)'
@@ -735,7 +718,7 @@ class _ContributionForm extends StatelessWidget {
                     label: 'Categoría',
                     value: category,
                     hint: 'Seleccionar categoría',
-                    items: LocalStoryRepository.categories
+                    items: categories
                         .map((value) => MapEntry(value.id, value.label))
                         .toList(),
                     onChanged: onCategory,
@@ -759,16 +742,70 @@ class _ContributionForm extends StatelessWidget {
                       );
               },
             ),
+            const SizedBox(height: 20),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final periodField = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _FieldLabel('Fecha o período de tiempo'),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: period,
+                      maxLength: storyPeriodLimit,
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(storyPeriodLimit),
+                        _SafeTextFormatter(),
+                      ],
+                      validator: (value) => (value?.trim().length ?? 0) < 2
+                          ? 'Indicá una fecha o período aproximado'
+                          : null,
+                      decoration: const InputDecoration(
+                        hintText: 'Ej: 1940–1960 o década de 1980',
+                        counterText: '',
+                      ),
+                    ),
+                  ],
+                );
+                final evidenceField = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _DropdownField(
+                      label: 'Nivel de evidencia',
+                      value: evidence,
+                      hint: 'Seleccionar nivel',
+                      items: evidenceLevels,
+                      onChanged: onEvidence,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Documentada: historia respaldada y validada a partir de fuentes, archivos, publicaciones, documentos, registros u otros materiales verificables.\n\nAporte de vecinos: historia, dato, testimonio o material compartido por vecinos, familias, comercios, clubes, escuelas o instituciones, que luego puede ser revisado, ampliado y contrastado por el equipo.',
+                    ),
+                  ],
+                );
+                return constraints.maxWidth < 560
+                    ? Column(
+                        children: [
+                          periodField,
+                          const SizedBox(height: 20),
+                          evidenceField,
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: periodField),
+                          const SizedBox(width: 16),
+                          Expanded(child: evidenceField),
+                        ],
+                      );
+              },
+            ),
             const SizedBox(height: 24),
             const _FieldLabel('Sumar fotos (opcional)'),
             const SizedBox(height: 6),
             const Text(
               'Hasta 3 fotos JPG, PNG o WebP · 8 MB por foto · 20 MB en total.',
-              style: TextStyle(color: AppColors.muted, fontSize: 12),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Se abrirá el explorador de archivos. La cámara no se utilizará.',
               style: TextStyle(color: AppColors.muted, fontSize: 12),
             ),
             const SizedBox(height: 12),
@@ -810,35 +847,21 @@ class _ContributionForm extends StatelessWidget {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   const Text(
-                    'Acepto los términos y condiciones y la política de privacidad. ',
+                    'Declaro que he leído y acepto los ',
+                    style: TextStyle(fontSize: 13, height: 1.4),
                   ),
                   _LegalLink(
-                    'Ver términos',
+                    'Términos y Condiciones.',
                     () => onOpenLegal(LegalDocument.terms),
                   ),
-                  const Text(' · '),
-                  _LegalLink(
-                    'Ver privacidad',
-                    () => onOpenLegal(LegalDocument.privacy),
-                  ),
                 ],
-              ),
-            ),
-            CheckboxListTile(
-              value: contactConsent,
-              onChanged: onContactConsent,
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              title: const Text(
-                'Acepto que me contacten al email con el que me autentifiqué.',
-                style: TextStyle(fontSize: 13),
               ),
             ),
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: onSubmit,
+                onPressed: isSubmitting ? null : onSubmit,
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 18),
                 ),
@@ -851,6 +874,20 @@ class _ContributionForm extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _SafeTextFormatter extends TextInputFormatter {
+  _SafeTextFormatter();
+
+  static final _unsafe = RegExp(
+    r'[<>\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]',
+  );
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) => newValue.copyWith(text: newValue.text.replaceAll(_unsafe, ''));
 }
 
 class _DropdownField extends StatelessWidget {
@@ -962,11 +999,7 @@ class _LegalLink extends StatelessWidget {
     onTap: onTap,
     child: Text(
       label,
-      style: const TextStyle(
-        color: AppColors.rust,
-        fontWeight: FontWeight.w900,
-        decoration: TextDecoration.underline,
-      ),
+      style: const TextStyle(color: AppColors.rust, fontSize: 13, height: 1.4),
     ),
   );
 }
@@ -1012,7 +1045,7 @@ class _UploadOverlay extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Image.asset(
-                'assets/brand/dardito_app_icon.png',
+                'assets/brand/dardito_frente_green_transparent.png',
                 width: 82,
                 height: 82,
               ),

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dardito-742d2.web.app/sitemap.xml

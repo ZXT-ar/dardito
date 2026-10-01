@@ -1,0 +1,27 @@
+DirectoryIndex index.html
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Ruta pública exigida para el documento legal. Se atiende con un archivo
+  # físico para que también funcione si el servidor no aplica el fallback SPA.
+  RewriteRule ^terminos_y_politicas/?$ terminos_y_politicas/index.html [L]
+  RewriteRule ^condiciones_del_servicio/?$ condiciones_del_servicio/index.html [L]
+  RewriteRule ^eliminacion_de_datos/?$ eliminacion_de_datos/index.html [L]
+
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+  <FilesMatch "^(index\.html|flutter_bootstrap\.js|main\.dart\.js|flutter_service_worker\.js|version\.json)$">
+    Header always set Cache-Control "no-cache, no-store, must-revalidate"
+    Header always set Pragma "no-cache"
+    Header always set Expires "0"
+  </FilesMatch>
+</IfModule>

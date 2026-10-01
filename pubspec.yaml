@@ -77,12 +77,12 @@ flutter:
     - assets/images/map_markers_v2/optimized/
 
   fonts:
-    - family: Atkinson Hyperlegible Next
+    - family: Inter
       fonts:
-        - asset: assets/fonts/AtkinsonHyperlegibleNext-Variable.ttf
-    - family: Literata
+        - asset: assets/fonts/Inter-Variable.ttf
+    - family: Lora
       fonts:
-        - asset: assets/fonts/Literata-Variable.ttf
+        - asset: assets/fonts/Lora-Variable.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

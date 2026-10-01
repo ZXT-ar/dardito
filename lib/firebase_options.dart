@@ -21,7 +21,7 @@ abstract final class DefaultFirebaseOptions {
     appId: '1:607361358605:web:d0a4757893ccfd37c5ee44',
     messagingSenderId: '607361358605',
     projectId: 'dardito-742d2',
-    authDomain: 'dardito-742d2.firebaseapp.com',
+    authDomain: 'auth.darditohistoriasplatenses.com',
     storageBucket: 'dardito-742d2.firebasestorage.app',
     measurementId: 'G-63Z7EYPDSQ',
   );

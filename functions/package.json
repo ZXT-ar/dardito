@@ -12,16 +12,29 @@
     "build:watch": "tsc --watch",
     "lint": "tsc --noEmit",
     "test": "npm run build && node --test lib/domain/*.test.js",
+    "knowledge:lab": "npm run build && node scripts/knowledge-lab.mjs",
+    "knowledge:snapshot": "npm run build && node scripts/knowledge-snapshot.mjs",
+    "knowledge:evaluate": "npm run build && node scripts/knowledge-evaluate.mjs",
+    "test:knowledge:integration": "npm run build && node test/knowledge.emulator.mjs",
     "serve": "npm run build && firebase emulators:start --only functions,firestore",
-    "seed": "npm run build && node lib/scripts/seed-corpus.js"
+    "seed": "npm run build && node lib/scripts/seed-corpus.js",
+    "migrate:public-metadata": "npm run build && node lib/scripts/migrate-public-story-metadata.js"
   },
   "dependencies": {
     "@google/genai": "^2.3.0",
     "firebase-admin": "^14.2.0",
-    "firebase-functions": "^7.3.0"
+    "firebase-functions": "^7.3.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.2.108",
+    "pdfkit": "^0.17.2",
+    "google-auth-library": "10.9.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
+    "@types/pdfkit": "^0.17.4",
     "typescript": "^5.8.0"
+  },
+  "overrides": {
+    "qs": "^6.16.0"
   }
 }

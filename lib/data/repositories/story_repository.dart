@@ -1,244 +1,243 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:convert';
 
-import '../../core/theme/app_theme.dart';
+import 'package:http/http.dart' as http;
+
+import '../../core/config/backend_config.dart';
+import '../catalogs/story_catalog.dart';
 import '../models/story.dart';
 
 abstract interface class StoryRepository {
-  List<CityStory> getAll();
+  Future<List<CityStory>> fetchAll({bool forceRefresh = false});
+
+  void dispose();
 }
 
-class LocalStoryRepository implements StoryRepository {
-  static const categories = [
-    StoryCategory(
-      'architecture',
-      'Arquitectura',
-      Icons.architecture_rounded,
-      AppColors.rust,
-    ),
-    StoryCategory(
-      'mystery',
-      'Misterios',
-      Icons.auto_awesome_rounded,
-      Color(0xFF5E537B),
-    ),
-    StoryCategory(
-      'culture',
-      'Cultura',
-      Icons.theater_comedy_rounded,
-      Color(0xFF9A6B24),
-    ),
-    StoryCategory(
-      'neighborhood',
-      'Barrios',
-      Icons.holiday_village_rounded,
-      AppColors.green,
-    ),
-    StoryCategory(
-      'memory',
-      'Memoria viva',
-      Icons.photo_camera_back_rounded,
-      Color(0xFF416A76),
-    ),
-  ];
+class StoryRepositoryException implements Exception {
+  const StoryRepositoryException(this.message);
+
+  final String message;
 
   @override
-  List<CityStory> getAll() => const [
-    CityStory(
-      id: 'diagonales',
-      title: 'La ciudad que nació de un plano',
-      subtitle: 'El diseño que todavía guía nuestros pasos',
-      category: StoryCategory(
-        'architecture',
-        'Arquitectura',
-        Icons.architecture_rounded,
-        AppColors.rust,
+  String toString() => message;
+}
+
+/// Loads the public, editorially published stories from the backend.
+///
+/// No story content is embedded in the Flutter bundle. The short in-memory
+/// cache only prevents duplicate requests during the same app session.
+class RemoteStoryRepository implements StoryRepository {
+  RemoteStoryRepository({http.Client? client, Uri? endpoint})
+    : _client = client ?? http.Client(),
+      _ownsClient = client == null,
+      _endpoint = endpoint ?? BackendConfig.publicStoriesEndpoint;
+
+  static const _maximumResponseBytes = 2 * 1024 * 1024;
+  static const _cacheDuration = Duration(minutes: 2);
+  static const _timeout = Duration(seconds: 12);
+
+  final http.Client _client;
+  final bool _ownsClient;
+  final Uri _endpoint;
+  List<CityStory>? _cached;
+  DateTime? _cachedAt;
+
+  @override
+  Future<List<CityStory>> fetchAll({bool forceRefresh = false}) async {
+    final cached = _cached;
+    final cachedAt = _cachedAt;
+    if (!forceRefresh &&
+        cached != null &&
+        cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _cacheDuration) {
+      return List.unmodifiable(cached);
+    }
+
+    final http.Response response;
+    try {
+      response = await _client
+          .get(_endpoint, headers: const {'Accept': 'application/json'})
+          .timeout(_timeout);
+    } on TimeoutException {
+      throw const StoryRepositoryException(
+        'El servicio de historias tardó demasiado en responder.',
+      );
+    } on http.ClientException {
+      throw const StoryRepositoryException(
+        'No fue posible conectar con el servicio de historias.',
+      );
+    }
+
+    if (response.statusCode != 200) {
+      throw StoryRepositoryException(
+        'El servicio de historias respondió con estado ${response.statusCode}.',
+      );
+    }
+    if (response.bodyBytes.length > _maximumResponseBytes) {
+      throw const StoryRepositoryException(
+        'La respuesta de historias supera el tamaño permitido.',
+      );
+    }
+
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    } on FormatException {
+      throw const StoryRepositoryException(
+        'El servicio devolvió un documento de historias inválido.',
+      );
+    }
+    if (decoded is! Map<String, dynamic> || decoded['schemaVersion'] != 1) {
+      throw const StoryRepositoryException(
+        'La versión del documento de historias no es compatible.',
+      );
+    }
+    final rawStories = decoded['stories'];
+    if (rawStories is! List || rawStories.length > 250) {
+      throw const StoryRepositoryException(
+        'La colección pública de historias no es válida.',
+      );
+    }
+
+    final stories = <CityStory>[];
+    final identifiers = <String>{};
+    for (final raw in rawStories) {
+      if (raw is! Map<String, dynamic>) {
+        throw const StoryRepositoryException(
+          'Una historia pública tiene un formato inválido.',
+        );
+      }
+      final story = _parseStory(raw);
+      if (!identifiers.add(story.id)) {
+        throw const StoryRepositoryException(
+          'La colección contiene identificadores duplicados.',
+        );
+      }
+      stories.add(story);
+    }
+    if (stories.isEmpty) {
+      throw const StoryRepositoryException(
+        'Todavía no hay historias publicadas disponibles.',
+      );
+    }
+
+    _cached = List.unmodifiable(stories);
+    _cachedAt = DateTime.now();
+    return List.unmodifiable(stories);
+  }
+
+  CityStory _parseStory(Map<String, dynamic> raw) {
+    final id = _requiredString(raw, 'id', 120);
+    if (!RegExp(r'^[a-zA-Z0-9_-]+$').hasMatch(id)) {
+      throw const StoryRepositoryException(
+        'Una historia contiene un identificador inválido.',
+      );
+    }
+    final title = _requiredString(raw, 'title', 120);
+    final summary = _requiredString(raw, 'summary', 420);
+    final body = _requiredString(raw, 'body', 18000);
+    final categoryId = _requiredString(raw, 'categoryId', 40);
+    final categoryLabel = _requiredString(raw, 'categoryLabel', 80);
+    final latitude = _requiredNumber(raw, 'latitude', -35.25, -34.55);
+    final longitude = _requiredNumber(raw, 'longitude', -58.35, -57.55);
+    final evidence = _requiredString(raw, 'evidence', 80);
+    final readingMinutes = raw['readingMinutes'];
+    if (readingMinutes is! int || readingMinutes < 1 || readingMinutes > 60) {
+      throw const StoryRepositoryException(
+        'Una historia contiene un tiempo de lectura inválido.',
+      );
+    }
+    final likeCount = raw['likeCount'];
+    if (likeCount is! int || likeCount < 0) {
+      throw const StoryRepositoryException(
+        'Una historia contiene un contador de Me gusta inválido.',
+      );
+    }
+    final contributionOrigin = switch (raw['contributionOrigin']) {
+      'community' => StoryContributionOrigin.community,
+      'dardito_team' => StoryContributionOrigin.darditoTeam,
+      null => StoryContributionOrigin.darditoTeam,
+      _ => throw const StoryRepositoryException(
+        'Una historia contiene una procedencia inválida.',
       ),
-      neighborhood: 'Casco Urbano',
-      period: '1882',
-      mapX: .50,
-      mapY: .49,
-      latitude: -34.9214,
-      longitude: -57.9544,
-      featured: true,
-      readMinutes: 5,
-      evidence: EvidenceLevel.documented,
-      source: 'Archivo Histórico de la Provincia de Buenos Aires',
-      shortStory:
-          'La Plata fue pensada antes de ser caminada: una cuadrícula atravesada por diagonales, plazas y un bosque que hizo del plano una identidad.',
-      fullStory:
-          'La fundación de La Plata en 1882 estuvo acompañada por una planificación urbana excepcional para su tiempo. El trazado atribuido al equipo de Pedro Benoit organizó una cuadrícula regular, cruzada por diagonales y plazas distribuidas con una lógica precisa. Más que una rareza geométrica, el plano buscaba ventilación, circulación y espacios verdes. Esa estructura sigue orientando —y a veces desorientando— a quienes caminan la ciudad. Mirarla desde arriba permite entender por qué la forma urbana se volvió uno de los símbolos platenses más reconocibles.',
-    ),
-    CityStory(
-      id: 'catedral',
-      title: 'Una catedral que esperó sus torres',
-      subtitle: 'Más de un siglo para completar el horizonte',
-      category: StoryCategory(
-        'architecture',
-        'Arquitectura',
-        Icons.architecture_rounded,
-        AppColors.rust,
-      ),
-      neighborhood: 'Plaza Moreno',
-      period: '1884–1999',
-      mapX: .50,
-      mapY: .57,
-      latitude: -34.9229,
-      longitude: -57.9560,
-      featured: true,
-      readMinutes: 4,
-      evidence: EvidenceLevel.documented,
-      source: 'Museo de la Catedral de La Plata',
-      shortStory:
-          'La piedra fundamental se colocó en 1884, pero la silueta que hoy reconocemos terminó de definirse más de cien años después.',
-      fullStory:
-          'La Catedral de la Inmaculada Concepción comenzó a construirse poco después de la fundación de la ciudad. Durante décadas su fachada permaneció sin las torres proyectadas. Recién hacia fines del siglo XX una gran obra de restauración y completamiento permitió levantar las agujas que hoy recortan el cielo de Plaza Moreno. La larga espera convirtió al edificio en testigo de varias generaciones y en una buena manera de leer cómo una ciudad también termina de imaginarse con el tiempo.',
-    ),
-    CityStory(
-      id: 'tuneles',
-      title: 'Los túneles bajo la ciudad',
-      subtitle: 'Entre planos, pasadizos y versiones',
-      category: StoryCategory(
-        'mystery',
-        'Misterios',
-        Icons.auto_awesome_rounded,
-        Color(0xFF5E537B),
-      ),
-      neighborhood: 'Centro',
-      period: 'Finales del siglo XIX',
-      mapX: .44,
-      mapY: .44,
-      latitude: -34.9186,
-      longitude: -57.9464,
-      featured: true,
-      readMinutes: 6,
-      evidence: EvidenceLevel.oralTradition,
-      source:
-          'Relatos urbanos y registros periodísticos; versiones en revisión',
-      shortStory:
-          'Bajo edificios públicos aparecen subsuelos y pasajes reales. La leyenda los conecta en una red secreta mucho más extensa.',
-      fullStory:
-          'La idea de una red de túneles que une los principales edificios públicos es una de las leyendas más persistentes de La Plata. Existen subsuelos, conductos técnicos y pasajes documentados en distintos puntos, pero no todas las conexiones que circulan en relatos populares han sido comprobadas. Dardito conserva las dos capas: aquello que puede verificarse y las versiones que la ciudad siguió contando. El misterio, en este caso, también revela cómo imaginamos el subsuelo de una capital planificada.',
-    ),
-    CityStory(
-      id: 'republica',
-      title: 'La república donde gobiernan los chicos',
-      subtitle: 'Una ciudad en miniatura dentro del bosque',
-      category: StoryCategory(
-        'culture',
-        'Cultura',
-        Icons.theater_comedy_rounded,
-        Color(0xFF9A6B24),
-      ),
-      neighborhood: 'Gonnet',
-      period: '1951',
-      mapX: .25,
-      mapY: .23,
-      latitude: -34.8905,
-      longitude: -58.0184,
-      featured: true,
-      readMinutes: 4,
-      evidence: EvidenceLevel.documented,
-      source: 'Archivo de la República de los Niños',
-      shortStory:
-          'En Gonnet existe una pequeña ciudad cívica creada para que las infancias aprendan ciudadanía jugando.',
-      fullStory:
-          'La República de los Niños abrió sus puertas en 1951 como un espacio educativo y recreativo a escala infantil. Sus edificios representan instituciones de una república democrática y mezclan referencias arquitectónicas de distintos lugares del mundo. Generaciones enteras la visitaron en excursiones, paseos familiares y jornadas escolares. Más allá de las historias que rodean su origen, su valor reside en una idea singular: aprender cómo funciona una comunidad recorriéndola con el cuerpo y la imaginación.',
-    ),
-    CityStory(
-      id: 'meridiano',
-      title: 'Cuando Meridiano V volvió a encontrarse',
-      subtitle: 'La estación que se convirtió en barrio cultural',
-      category: StoryCategory(
-        'neighborhood',
-        'Barrios',
-        Icons.holiday_village_rounded,
-        AppColors.green,
-      ),
-      neighborhood: 'Meridiano V',
-      period: '1910–actualidad',
-      mapX: .57,
-      mapY: .75,
-      latitude: -34.9318,
-      longitude: -57.9392,
-      readMinutes: 5,
-      evidence: EvidenceLevel.documented,
-      source: 'Archivo ferroviario y organizaciones culturales barriales',
-      shortStory:
-          'Donde dejaron de llegar trenes, vecinos y artistas construyeron un nuevo punto de encuentro.',
-      fullStory:
-          'La estación Provincial fue una pieza central del ferrocarril y dio identidad a la zona. Tras el cierre de servicios, el edificio y sus alrededores atravesaron años de silencio. La recuperación comunitaria impulsó talleres, espectáculos, gastronomía y encuentros culturales. Meridiano V muestra que el patrimonio no queda quieto: puede adquirir una vida nueva cuando un barrio decide volver a habitarlo.',
-    ),
-    CityStory(
-      id: 'tolosa',
-      title: 'La memoria ferroviaria de Tolosa',
-      subtitle: 'Talleres, familias y un barrio hecho alrededor del tren',
-      category: StoryCategory(
-        'memory',
-        'Memoria viva',
-        Icons.photo_camera_back_rounded,
-        Color(0xFF416A76),
-      ),
-      neighborhood: 'Tolosa',
-      period: '1880–actualidad',
-      mapX: .34,
-      mapY: .36,
-      latitude: -34.9023,
-      longitude: -57.9690,
-      readMinutes: 4,
-      evidence: EvidenceLevel.community,
-      source: 'Aporte de vecinos — pendiente de revisión editorial',
-      shortStory:
-          'Los talleres no fueron solo un lugar de trabajo: organizaron rutinas, afectos y relatos que todavía circulan entre familias.',
-      fullStory:
-          'En Tolosa, la historia ferroviaria aparece en fotografías familiares, oficios transmitidos y recuerdos cotidianos. Este relato reúne un primer aporte comunitario sobre las jornadas de los talleres y las redes vecinales que crecieron alrededor. Está señalado como memoria viva porque necesita ampliar testimonios y fuentes antes de considerarse documentado. Su lugar en el mapa recuerda que una ciudad también se conoce escuchando a quienes la vivieron.',
-    ),
-    CityStory(
-      id: 'bosque',
-      title: 'El bosque antes de la ciudad',
-      subtitle: 'Un paisaje que cambió de sentido',
-      category: StoryCategory(
-        'memory',
-        'Memoria viva',
-        Icons.photo_camera_back_rounded,
-        Color(0xFF416A76),
-      ),
-      neighborhood: 'El Bosque',
-      period: 'Siglo XIX',
-      mapX: .61,
-      mapY: .25,
-      latitude: -34.9085,
-      longitude: -57.9370,
-      readMinutes: 3,
-      evidence: EvidenceLevel.documented,
-      source: 'Museo y Archivo Dardo Rocha',
-      shortStory:
-          'Antes del paseo, los museos y las canchas, estas tierras formaban parte de otra geografía productiva.',
-      fullStory:
-          'El Paseo del Bosque ocupa tierras que anteceden a la fundación de La Plata. Con la nueva capital, el área fue transformándose en uno de sus grandes espacios públicos y científicos: allí se instalaron el Museo, el Observatorio, el Jardín Zoológico y luego instituciones deportivas. Sus senderos reúnen capas muy distintas de la ciudad, desde la planificación fundacional hasta las experiencias cotidianas de estudiantes, familias e hinchas.',
-    ),
-    CityStory(
-      id: 'citybell',
-      title: 'La campana que nombró a City Bell',
-      subtitle: 'Una identidad nacida junto a las vías',
-      category: StoryCategory(
-        'neighborhood',
-        'Barrios',
-        Icons.holiday_village_rounded,
-        AppColors.green,
-      ),
-      neighborhood: 'City Bell',
-      period: '1914',
-      mapX: .14,
-      mapY: .14,
-      latitude: -34.8650,
-      longitude: -58.0470,
-      readMinutes: 3,
-      evidence: EvidenceLevel.documented,
-      source: 'Reseñas históricas municipales',
-      shortStory:
-          'El crecimiento alrededor de la estación convirtió un nombre ferroviario en una identidad barrial propia.',
-      fullStory:
-          'City Bell se consolidó alrededor del ferrocarril y de loteos que atrajeron a nuevas familias. Su nombre se asocia a la familia Bell, vinculada a las tierras de la zona. Con el tiempo, calles arboladas, comercios y espacios de encuentro construyeron una identidad que excede el origen ferroviario. La historia local se sigue completando con recuerdos de antiguos vecinos y archivos familiares.',
-    ),
-  ];
+    };
+
+    return CityStory(
+      id: id,
+      title: title,
+      subtitle: _requiredString(raw, 'subtitle', 420),
+      category: StoryCatalog.resolve(categoryId, categoryLabel),
+      neighborhood: _requiredString(raw, 'neighborhood', 100),
+      period: _requiredString(raw, 'period', 100),
+      shortStory: summary,
+      fullStory: body,
+      source: _requiredString(raw, 'sourceName', 300),
+      evidence: evidence,
+      evidenceLabel: _evidenceLabel(raw['evidenceLabel'], evidence),
+      mapX: .5,
+      mapY: .5,
+      latitude: latitude,
+      longitude: longitude,
+      featured: raw['featured'] == true,
+      readMinutes: readingMinutes,
+      likeCount: likeCount,
+      publicAuthor: raw['publicAuthor'] is String
+          ? raw['publicAuthor'] as String
+          : null,
+      contributionOrigin: contributionOrigin,
+    );
+  }
+
+  String _requiredString(Map<String, dynamic> raw, String key, int maximum) {
+    final value = raw[key];
+    if (value is! String) {
+      throw StoryRepositoryException('Falta el campo público $key.');
+    }
+    final normalized = value.replaceAll('\u0000', '').trim();
+    if (normalized.isEmpty || normalized.length > maximum) {
+      throw StoryRepositoryException('El campo público $key no es válido.');
+    }
+    return normalized;
+  }
+
+  String _evidenceLabel(Object? value, String evidence) {
+    // Keep stored evidence intact, but never revive obsolete public labels.
+    switch (evidence) {
+      case 'documented':
+        return 'Documentada';
+      case 'oral_tradition':
+      case 'community':
+        return 'Aporte de vecinos';
+    }
+    if (value is String &&
+        value.trim().isNotEmpty &&
+        value.trim().length <= 100) {
+      return value.trim();
+    }
+    return evidence;
+  }
+
+  double _requiredNumber(
+    Map<String, dynamic> raw,
+    String key,
+    double minimum,
+    double maximum,
+  ) {
+    final value = raw[key];
+    if (value is! num || !value.isFinite) {
+      throw StoryRepositoryException('Falta la coordenada pública $key.');
+    }
+    final number = value.toDouble();
+    if (number < minimum || number > maximum) {
+      throw StoryRepositoryException(
+        'La coordenada pública $key no es válida.',
+      );
+    }
+    return number;
+  }
+
+  @override
+  void dispose() {
+    if (_ownsClient) _client.close();
+  }
 }

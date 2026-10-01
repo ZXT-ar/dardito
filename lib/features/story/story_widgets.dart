@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/analytics/usage_analytics_service.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/story.dart';
+import 'story_share.dart';
+import 'story_like_service.dart';
 
 class StoryCard extends StatelessWidget {
   const StoryCard({
@@ -74,6 +77,15 @@ class StoryCard extends StatelessWidget {
                   context,
                 ).textTheme.bodyMedium?.copyWith(color: AppColors.muted),
               ),
+              if (story.publicAuthor != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Aporte de: ${story.publicAuthor}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ],
               const Spacer(),
               const SizedBox(height: 18),
               Row(
@@ -96,6 +108,20 @@ class StoryCard extends StatelessWidget {
                       color: AppColors.muted,
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  const Icon(
+                    Icons.favorite_rounded,
+                    size: 14,
+                    color: AppColors.rust,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${story.likeCount}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -107,6 +133,7 @@ class StoryCard extends StatelessWidget {
 }
 
 void showStoryDetails(BuildContext context, CityStory story) {
+  UsageAnalyticsService.instance.storyViewed(story);
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -189,8 +216,16 @@ void showStoryDetails(BuildContext context, CityStory story) {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                const SizedBox(height: 16),
+                _ContributionOriginBadge(story.contributionOrigin),
+                if (story.publicAuthor != null) ...[
+                  const SizedBox(height: 8),
+                  Text('Aporte de: ${story.publicAuthor}'),
+                ],
                 const SizedBox(height: 24),
-                _EvidenceBadge(story.evidence),
+                _EvidenceBadge(story.evidence, story.evidenceLabel),
+                const SizedBox(height: 18),
+                _StoryLikeButton(story: story),
                 const SizedBox(height: 28),
                 Text(
                   story.fullStory,
@@ -237,7 +272,7 @@ void showStoryDetails(BuildContext context, CityStory story) {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () {},
+                        onPressed: () => showStoryShareOptions(context, story),
                         icon: const Icon(Icons.share_outlined),
                         label: const Text('Compartir'),
                       ),
@@ -261,29 +296,113 @@ void showStoryDetails(BuildContext context, CityStory story) {
   );
 }
 
+class _StoryLikeButton extends StatefulWidget {
+  const _StoryLikeButton({required this.story});
+  final CityStory story;
+
+  @override
+  State<_StoryLikeButton> createState() => _StoryLikeButtonState();
+}
+
+class _StoryLikeButtonState extends State<_StoryLikeButton> {
+  bool _liked = false;
+  bool _loading = false;
+  bool _loaded = false;
+  late int _likeCount = widget.story.likeCount;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_loaded) return;
+    _loaded = true;
+    final scope = StoryLikesScope.maybeOf(context);
+    if (scope == null) return;
+    scope.status(widget.story.id).then((state) {
+      if (!mounted) return;
+      setState(() {
+        _liked = state.liked;
+        _likeCount = state.likeCount;
+      });
+    });
+  }
+
+  Future<void> _toggle() async {
+    final scope = StoryLikesScope.maybeOf(context);
+    if (scope == null || _loading) return;
+    setState(() => _loading = true);
+    try {
+      final state = await scope.toggle(widget.story.id);
+      if (!mounted) return;
+      setState(() {
+        _liked = state.liked;
+        _likeCount = state.likeCount;
+      });
+    } catch (_) {
+      // El coordinador global muestra el error o el diálogo de autenticación.
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    toggled: _liked,
+    label: _liked ? 'Quitar Me gusta' : 'Me gusta esta historia',
+    child: OutlinedButton.icon(
+      onPressed: _loading ? null : _toggle,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: _liked ? AppColors.rust : AppColors.ink,
+        side: BorderSide(color: _liked ? AppColors.rust : AppColors.line),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      ),
+      icon: _loading
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(
+              _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            ),
+      label: Text(_liked ? 'Te gusta · $_likeCount' : 'Me gusta · $_likeCount'),
+    ),
+  );
+}
+
 class _EvidenceBadge extends StatelessWidget {
-  const _EvidenceBadge(this.level);
-  final EvidenceLevel level;
+  const _EvidenceBadge(this.level, this.customLabel);
+  final String level;
+  final String customLabel;
 
   @override
   Widget build(BuildContext context) {
     final (icon, label, color) = switch (level) {
-      EvidenceLevel.documented => (
-        Icons.verified_outlined,
-        'Historia documentada',
-        AppColors.green,
-      ),
-      EvidenceLevel.oralTradition => (
-        Icons.record_voice_over_outlined,
-        'Tradición oral · versiones en revisión',
-        const Color(0xFF725D3D),
-      ),
-      EvidenceLevel.community => (
+      'documented' => (Icons.verified_outlined, 'Documentada', AppColors.green),
+      'oral_tradition' || 'community' => (
         Icons.groups_outlined,
-        'Aporte de la comunidad',
+        'Aporte de vecinos',
         const Color(0xFF416A76),
       ),
+      _ => (Icons.fact_check_outlined, customLabel, AppColors.green),
     };
     return TrustBadge(icon: icon, label: label, color: color);
   }
+}
+
+class _ContributionOriginBadge extends StatelessWidget {
+  const _ContributionOriginBadge(this.origin);
+
+  final StoryContributionOrigin origin;
+
+  @override
+  Widget build(BuildContext context) => TrustBadge(
+    icon: origin == StoryContributionOrigin.community
+        ? Icons.groups_outlined
+        : Icons.verified_user_outlined,
+    label: origin.label,
+    color: origin == StoryContributionOrigin.community
+        ? const Color(0xFF416A76)
+        : AppColors.green,
+  );
 }

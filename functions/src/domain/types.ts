@@ -1,5 +1,5 @@
 export type Channel = "web" | "whatsapp";
-export type EvidenceLevel = "documented" | "oral_tradition" | "community";
+export type EvidenceLevel = string;
 
 export interface CorpusItem {
   id: string;
@@ -9,7 +9,13 @@ export interface CorpusItem {
   category: string;
   neighborhood: string;
   period?: string;
+  subtitle?: string;
+  latitude?: number;
+  longitude?: number;
+  featured?: boolean;
+  readingMinutes?: number;
   evidence: EvidenceLevel;
+  evidenceLabel?: string;
   sourceName?: string;
   sourceUrl?: string;
   keywords: string[];
@@ -19,12 +25,15 @@ export interface CorpusItem {
 export interface ChatTurn {
   role: "user" | "model";
   text: string;
+  /** Published stories actually used by the previous answer; never a user claim. */
+  sourceIds?: string[];
 }
 
 export interface ChatRequest {
   message: string;
   conversationId?: string;
   participantId?: string;
+  userId?: string;
   sessionId?: string;
   moderationScopeIds?: string[];
   channel: Channel;

@@ -47,6 +47,11 @@ if (credentialPath) {
         category: {stringValue: item.category},
         neighborhood: {stringValue: item.neighborhood},
         period: {stringValue: item.period ?? ""},
+        subtitle: {stringValue: item.subtitle ?? item.summary},
+        latitude: {doubleValue: item.latitude ?? 0},
+        longitude: {doubleValue: item.longitude ?? 0},
+        featured: {booleanValue: item.featured ?? false},
+        readingMinutes: {integerValue: String(item.readingMinutes ?? 3)},
         evidence: {stringValue: item.evidence},
         sourceName: {stringValue: item.sourceName ?? ""},
         keywords: {

@@ -9,6 +9,12 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    # El expediente INPI contiene fragmentos representativos concatenados y no
+    # forma parte de las fuentes compilables de la aplicación.
+    - docs/RegistrosINPI/**
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`

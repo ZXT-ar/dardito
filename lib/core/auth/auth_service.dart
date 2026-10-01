@@ -25,9 +25,31 @@ class AuthUser {
   final String? photoUrl;
 }
 
+class AuthConsent {
+  const AuthConsent({
+    required this.accepted,
+    this.termsVersion = '2026-08-15',
+    this.privacyVersion = '2026-08-15',
+  });
+
+  final bool accepted;
+  final String termsVersion;
+  final String privacyVersion;
+}
+
+class AuthAccessStatus {
+  const AuthAccessStatus({required this.allowed, this.reason});
+  final bool allowed;
+  final String? reason;
+}
+
 abstract interface class AuthService {
   AuthUser? get currentUser;
-  Future<AuthUser> signIn(AuthProvider provider);
+  Future<AuthUser> signIn(
+    AuthProvider provider, {
+    required AuthConsent consent,
+  });
+  Future<AuthAccessStatus> checkAccess();
   Future<void> signOut();
 }
 
@@ -40,8 +62,8 @@ class FirebaseAuthService extends ChangeNotifier implements AuthService {
   }
 
   final firebase_auth.FirebaseAuth _firebaseAuth;
-  late final Stream<firebase_auth.User?> _authStateStream =
-      _firebaseAuth.authStateChanges();
+  late final Stream<firebase_auth.User?> _authStateStream = _firebaseAuth
+      .authStateChanges();
   late final StreamSubscription<firebase_auth.User?> _subscription;
 
   Stream<firebase_auth.User?> get authStateChanges => _authStateStream;
@@ -62,7 +84,13 @@ class FirebaseAuthService extends ChangeNotifier implements AuthService {
   }
 
   @override
-  Future<AuthUser> signIn(AuthProvider provider) async {
+  Future<AuthUser> signIn(
+    AuthProvider provider, {
+    required AuthConsent consent,
+  }) async {
+    if (!consent.accepted) {
+      throw StateError('Debés aceptar los términos y condiciones.');
+    }
     final googleProvider = firebase_auth.GoogleAuthProvider()
       ..setCustomParameters({'prompt': 'select_account'});
     final credential = kIsWeb
@@ -72,12 +100,15 @@ class FirebaseAuthService extends ChangeNotifier implements AuthService {
     if (firebaseUser == null || firebaseUser.email == null) {
       throw StateError('Google no devolvió una identidad válida.');
     }
-    await _registerProfile(firebaseUser);
+    await _registerProfile(firebaseUser, consent);
     notifyListeners();
     return currentUser!;
   }
 
-  Future<void> _registerProfile(firebase_auth.User user) async {
+  Future<void> _registerProfile(
+    firebase_auth.User user,
+    AuthConsent consent,
+  ) async {
     final token = await user.getIdToken(true);
     if (token == null || token.isEmpty) {
       throw StateError('No fue posible validar la sesión de Google.');
@@ -90,6 +121,11 @@ class FirebaseAuthService extends ChangeNotifier implements AuthService {
             'Content-Type': 'application/json',
           },
           body: jsonEncode({
+            'consent': {
+              'accepted': consent.accepted,
+              'termsVersion': consent.termsVersion,
+              'privacyVersion': consent.privacyVersion,
+            },
             'client': {
               'platform': defaultTargetPlatform.name,
               'isWeb': kIsWeb,
@@ -105,6 +141,43 @@ class FirebaseAuthService extends ChangeNotifier implements AuthService {
       throw StateError(
         'No pudimos crear tu perfil seguro. Intentá nuevamente.',
       );
+    }
+  }
+
+  @override
+  Future<AuthAccessStatus> checkAccess() async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) return const AuthAccessStatus(allowed: false);
+    final token = await user.getIdToken();
+    if (token == null || token.isEmpty) {
+      return const AuthAccessStatus(allowed: false, reason: 'invalid_session');
+    }
+    try {
+      final response = await http
+          .post(
+            BackendConfig.accessEndpoint,
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'client': {
+                'platform': defaultTargetPlatform.name,
+                'isWeb': kIsWeb,
+              },
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+      final decoded = jsonDecode(response.body);
+      final reason = decoded is Map<String, dynamic>
+          ? decoded['reason'] as String?
+          : null;
+      return AuthAccessStatus(
+        allowed: response.statusCode == 200,
+        reason: reason,
+      );
+    } catch (_) {
+      return const AuthAccessStatus(allowed: false, reason: 'unavailable');
     }
   }
 
