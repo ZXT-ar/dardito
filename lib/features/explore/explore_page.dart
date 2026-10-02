@@ -75,8 +75,6 @@ class _ExplorePageState extends State<ExplorePage> {
     super.initState();
     _selected = widget.initiallySelected;
     _category = widget.initialCategory;
-    _filtersExpanded = _category != null;
-    _desktopFiltersExpanded = _category != null;
     Future.wait([
       rootBundle.loadString('assets/map/la_plata_map_style.json'),
       rootBundle.loadString('assets/map/la_plata_map_style_light.json'),

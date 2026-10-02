@@ -75,7 +75,8 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(seconds: 1));
         expect(find.byType(ExplorePage), findsOneWidget);
-        expect(find.text(entry.key), findsOneWidget);
+        expect(find.text('Restablecer'), findsNothing);
+        expect(find.text('Todos los barrios'), findsNothing);
         final map = tester.widget<DarditoMapSurface>(
           find.byType(DarditoMapSurface),
         );
@@ -84,6 +85,10 @@ void main() {
           isTrue,
         );
         expect(map.stories.length, 1);
+        await tester.tap(find.text('Filtros'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.text(entry.key), findsOneWidget);
         await tester.tap(find.text('Restablecer'));
         await tester.pump(const Duration(milliseconds: 500));
         expect(
