@@ -11,13 +11,41 @@ class HomeExploreInvitation extends StatelessWidget {
     super.key,
     required this.compact,
     required this.onTap,
+    this.showCompass = true,
   });
   final bool compact;
+  final bool showCompass;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final content = compact
+    final content = compact && !showCompass
+        ? const Padding(
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    'Explorar el mapa',
+                    style: TextStyle(
+                      fontFamily: 'Lora',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 25,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFF876015),
+                  size: 30,
+                ),
+              ],
+            ),
+          )
+        : compact
         ? AspectRatio(
             aspectRatio: 360 / 205,
             child: Stack(
@@ -91,29 +119,30 @@ class HomeExploreInvitation extends StatelessWidget {
                   return Stack(
                     clipBehavior: Clip.hardEdge,
                     children: [
-                      Positioned(
-                        left: -169,
-                        bottom: -169,
-                        width: 520,
-                        height: 520,
-                        child: ShaderMask(
-                          blendMode: BlendMode.dstIn,
-                          shaderCallback: (bounds) => const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            stops: [0, .48, .675, 1],
-                            colors: [
-                              Colors.white,
-                              Colors.white,
-                              Colors.transparent,
-                              Colors.transparent,
-                            ],
-                          ).createShader(bounds),
-                          child: CustomPaint(
-                            painter: _CompassPainter(angle: angle),
+                      if (showCompass)
+                        Positioned(
+                          left: -169,
+                          bottom: -169,
+                          width: 520,
+                          height: 520,
+                          child: ShaderMask(
+                            blendMode: BlendMode.dstIn,
+                            shaderCallback: (bounds) => const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              stops: [0, .48, .675, 1],
+                              colors: [
+                                Colors.white,
+                                Colors.white,
+                                Colors.transparent,
+                                Colors.transparent,
+                              ],
+                            ).createShader(bounds),
+                            child: CustomPaint(
+                              painter: CompassPainter(angle: angle),
+                            ),
                           ),
                         ),
-                      ),
                       Positioned(
                         left: math.max(
                           310.0,
@@ -186,8 +215,8 @@ class HomeExploreInvitation extends StatelessWidget {
   }
 }
 
-class _CompassPainter extends CustomPainter {
-  const _CompassPainter({required this.angle});
+class CompassPainter extends CustomPainter {
+  const CompassPainter({required this.angle});
   final double angle;
   @override
   void paint(Canvas canvas, Size size) {
@@ -283,7 +312,7 @@ class _CompassPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_CompassPainter oldDelegate) => oldDelegate.angle != angle;
+  bool shouldRepaint(CompassPainter oldDelegate) => oldDelegate.angle != angle;
 }
 
 class _FoldedMapPainter extends CustomPainter {

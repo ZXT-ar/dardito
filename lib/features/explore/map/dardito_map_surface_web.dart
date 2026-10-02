@@ -9,6 +9,7 @@ import 'package:web/web.dart' as web;
 
 import '../../../data/models/story.dart';
 import 'story_clusters.dart';
+import 'map_zoom.dart';
 
 abstract interface class DarditoMapController {
   void zoomIn();
@@ -75,8 +76,8 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
         gmaps.MapOptions()
           ..center = gmaps.LatLng(-34.9214, -57.9544)
           ..zoom = 12.2
-          ..minZoom = 10.8
-          ..maxZoom = 18
+          ..minZoom = MapZoom.minimum
+          ..maxZoom = MapZoom.maximum
           ..gestureHandling = widget.interactive ? 'greedy' : 'none'
           ..draggable = widget.interactive
           ..scrollwheel = widget.interactive
@@ -269,8 +270,8 @@ class _WebDarditoMapController implements DarditoMapController {
   final gmaps.Map map;
 
   @override
-  void zoomIn() => map.zoom = (map.zoom + 1).clamp(10.8, 18);
+  void zoomIn() => map.zoom = MapZoom.clamp(map.zoom + 1);
 
   @override
-  void zoomOut() => map.zoom = (map.zoom - 1).clamp(10.8, 18);
+  void zoomOut() => map.zoom = MapZoom.clamp(map.zoom - 1);
 }

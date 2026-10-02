@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -11,11 +10,10 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/catalogs/story_catalog.dart';
 import '../../data/models/story.dart';
-import '../explore/map/dardito_map_surface.dart';
 import '../legal/legal_page.dart';
 import '../story/story_widgets.dart';
 import 'home_page_refined.dart' show RefinedHomeHero;
-import 'home_hero_backdrop.dart';
+import 'home_cartography.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({
@@ -38,33 +36,19 @@ class HomePage extends StatelessWidget {
     child: SingleChildScrollView(
       child: Column(
         children: [
-          HomeHeroBackdrop(
-            child: Column(
-              children: [
-                if (const bool.fromEnvironment('DARDITO_REFINED_HERO'))
-                  RefinedHomeHero(
+          HomeCartography(
+            stories: stories,
+            onExplore: onExplore,
+            hero: const bool.fromEnvironment('DARDITO_REFINED_HERO')
+                ? RefinedHomeHero(
                     withBackdrop: false,
                     onExplore: () => onExplore(null),
                     onAsk: () => onNavigate(2),
                   )
-                else
-                  _Hero(
+                : _Hero(
                     onExplore: () => onExplore(null),
                     onAsk: () => onNavigate(2),
                   ),
-                const SizedBox(height: 72),
-                Entrance(
-                  delay: const Duration(milliseconds: 80),
-                  child: MaxWidth(
-                    child: _MapCallout(
-                      stories: stories,
-                      onExplore: () => onExplore(null),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 48),
-              ],
-            ),
           ),
           const SizedBox(height: 96),
           Entrance(
@@ -549,102 +533,6 @@ class _Featured extends StatelessWidget {
         },
       ),
     ],
-  );
-}
-
-class _MapCallout extends StatefulWidget {
-  const _MapCallout({required this.stories, required this.onExplore});
-  final List<CityStory> stories;
-  final VoidCallback onExplore;
-
-  @override
-  State<_MapCallout> createState() => _MapCalloutState();
-}
-
-class _MapCalloutState extends State<_MapCallout> {
-  String? _mapStyle;
-  late final List<CityStory> _previewStories;
-
-  @override
-  void initState() {
-    super.initState();
-    final shuffled = [...widget.stories]..shuffle(Random(1882));
-    _previewStories = shuffled.take(min(6, shuffled.length)).toList();
-    rootBundle.loadString('assets/map/la_plata_map_style.json').then((style) {
-      if (mounted) setState(() => _mapStyle = style);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(30),
-    child: Container(
-      padding: const EdgeInsets.all(8),
-      color: Colors.transparent,
-      child: LayoutBuilder(
-        builder: (context, c) {
-          final narrow = c.maxWidth < 800;
-          final copy = Padding(
-            padding: EdgeInsets.all(narrow ? 24 : 42),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SectionEyebrow('El mapa vivo'),
-                const SizedBox(height: 20),
-                Text(
-                  'Cada punto guarda\nalgo para contar.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.displayMedium?.copyWith(color: AppColors.ink),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Recorré La Plata por barrio, época o curiosidad. Encontrá historias documentadas y aportes de vecinos, familias e instituciones.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
-                ),
-                const SizedBox(height: 26),
-                FilledButton.icon(
-                  onPressed: widget.onExplore,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.yellow,
-                    foregroundColor: AppColors.ink,
-                  ),
-                  icon: const Icon(Icons.map_outlined),
-                  label: const Text('Abrir el mapa'),
-                ),
-              ],
-            ),
-          );
-          final miniMap = ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: SizedBox(
-              height: narrow ? 340 : 470,
-              child: DarditoMapSurface(
-                stories: _previewStories,
-                selected: null,
-                style: _mapStyle,
-                interactive: false,
-                onSelect: (_) {},
-                onReady: (_) {},
-                bottomPadding: 0,
-                rightPadding: 0,
-              ),
-            ),
-          );
-          return narrow
-              ? Column(children: [copy, miniMap])
-              : Row(
-                  children: [
-                    Expanded(child: copy),
-                    Expanded(child: miniMap),
-                  ],
-                );
-        },
-      ),
-    ),
   );
 }
 

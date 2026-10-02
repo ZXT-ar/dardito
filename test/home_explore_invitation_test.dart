@@ -29,7 +29,7 @@ void main() {
       final painter = tester
           .widgetList<CustomPaint>(find.byType(CustomPaint))
           .map((w) => w.painter)
-          .firstWhere((p) => p.runtimeType.toString() == '_CompassPainter');
+          .firstWhere((p) => p.runtimeType.toString() == 'CompassPainter');
       return (painter as dynamic).angle as double;
     }
 

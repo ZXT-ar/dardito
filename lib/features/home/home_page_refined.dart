@@ -158,6 +158,7 @@ class RefinedHomeHero extends StatelessWidget {
                           constraints: const BoxConstraints(maxWidth: 420),
                           child: HomeExploreInvitation(
                             compact: true,
+                            showCompass: withBackdrop,
                             onTap: onExplore,
                           ),
                         ),
@@ -306,7 +307,11 @@ class RefinedHomeHero extends StatelessWidget {
                 left: -(MediaQuery.sizeOf(context).width - c.maxWidth) / 2,
                 right: -(MediaQuery.sizeOf(context).width - c.maxWidth) / 2,
                 bottom: 0,
-                child: HomeExploreInvitation(compact: false, onTap: onExplore),
+                child: HomeExploreInvitation(
+                  compact: false,
+                  onTap: onExplore,
+                  showCompass: withBackdrop,
+                ),
               ),
             ],
           );
