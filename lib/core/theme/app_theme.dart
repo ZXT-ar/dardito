@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'site_palette.dart';
 
 abstract final class AppColors {
   static const heroPaper = Color(0xFFF7EFDA);
@@ -20,6 +21,7 @@ abstract final class AppBreakpoints {
 }
 
 abstract final class AppTheme {
+  static ThemeData get dark => const SitePalette(true).theme(light);
   static ThemeData get light {
     final scheme = ColorScheme.fromSeed(
       seedColor: AppColors.yellow,
@@ -34,7 +36,7 @@ abstract final class AppTheme {
         surface: AppColors.paper,
         outline: AppColors.line,
       ),
-      scaffoldBackgroundColor: AppColors.cream,
+      scaffoldBackgroundColor: AppColors.heroPaper,
       textTheme: const TextTheme(
         displayLarge: TextStyle(
           fontFamily: 'Lora',

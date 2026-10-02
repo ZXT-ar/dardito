@@ -1,3 +1,4 @@
+import '../../core/theme/site_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/platform/pwa_install_service.dart';
@@ -21,7 +22,7 @@ class _InstallBannerState extends State<InstallBanner> {
     super.initState();
     _service = createPwaInstallService();
     _info = _service.info;
-    Future<void>.delayed(const Duration(milliseconds: 1200), () {
+    Future<void>.delayed(Duration(milliseconds: 1200), () {
       if (mounted) setState(() => _info = _service.info);
     });
   }
@@ -62,8 +63,8 @@ class _InstallBannerState extends State<InstallBanner> {
   void _showInstructions() => showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: AppColors.paper,
-    shape: const RoundedRectangleBorder(
+    backgroundColor: SitePalette.of(context).paper,
+    shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
     ),
     builder: (context) => _InstallInstructions(
@@ -78,13 +79,13 @@ class _InstallBannerState extends State<InstallBanner> {
     if (_info.isInstalled) {
       return Entrance(
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: AppColors.navy.withValues(alpha: .74),
+            color: SitePalette.of(context).navy.withValues(alpha: .74),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: AppColors.yellow.withValues(alpha: .24)),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
@@ -111,16 +112,16 @@ class _InstallBannerState extends State<InstallBanner> {
         distance: 3,
         scale: 1.004,
         child: Container(
-          padding: const EdgeInsets.all(10),
+          padding: EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppColors.paper,
+            color: SitePalette.of(context).paper,
             borderRadius: BorderRadius.circular(26),
             border: Border.all(color: Colors.white, width: 2),
             boxShadow: [
               BoxShadow(
-                color: AppColors.ink.withValues(alpha: .13),
+                color: SitePalette.of(context).ink.withValues(alpha: .13),
                 blurRadius: 32,
-                offset: const Offset(0, 14),
+                offset: Offset(0, 14),
               ),
             ],
           ),
@@ -138,38 +139,42 @@ class _InstallBannerState extends State<InstallBanner> {
                       fit: BoxFit.cover,
                     ),
                   ),
-                  const SizedBox(width: 15),
+                  SizedBox(width: 15),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Icon(_deviceIcon, size: 16, color: AppColors.green),
-                            const SizedBox(width: 6),
+                            Icon(
+                              _deviceIcon,
+                              size: 16,
+                              color: SitePalette.of(context).green,
+                            ),
+                            SizedBox(width: 6),
                             Flexible(
                               child: Text(
                                 'DETECTAMOS $_deviceName'.toUpperCase(),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 9,
                                   letterSpacing: .9,
                                   fontWeight: FontWeight.w900,
-                                  color: AppColors.green,
+                                  color: SitePalette.of(context).green,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
                           'Llevá el mapa con vos',
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
-                        const SizedBox(height: 2),
-                        const Text(
+                        SizedBox(height: 2),
+                        Text(
                           'Acceso directo, pantalla completa y contenido disponible más rápido.',
                           style: TextStyle(
-                            color: AppColors.muted,
+                            color: SitePalette.of(context).muted,
                             fontSize: 12,
                           ),
                         ),
@@ -181,13 +186,10 @@ class _InstallBannerState extends State<InstallBanner> {
               final action = FilledButton.icon(
                 onPressed: _installing ? null : _install,
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 17,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 17),
                 ),
                 icon: _installing
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
@@ -205,14 +207,14 @@ class _InstallBannerState extends State<InstallBanner> {
                   ? Column(
                       children: [
                         identity,
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         SizedBox(width: double.infinity, child: action),
                       ],
                     )
                   : Row(
                       children: [
                         Expanded(child: identity),
-                        const SizedBox(width: 20),
+                        SizedBox(width: 20),
                         action,
                       ],
                     );
@@ -325,10 +327,10 @@ class _InstallInstructions extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SafeArea(
     child: SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 34),
+      padding: EdgeInsets.fromLTRB(24, 14, 24, 34),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 620),
+          constraints: BoxConstraints(maxWidth: 620),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -337,12 +339,12 @@ class _InstallInstructions extends StatelessWidget {
                   width: 44,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.line,
+                    color: SitePalette.of(context).line,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: 28),
               Row(
                 children: [
                   ClipRRect(
@@ -353,7 +355,7 @@ class _InstallInstructions extends StatelessWidget {
                       height: 64,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,20 +364,22 @@ class _InstallInstructions extends StatelessWidget {
                           'Instalar en $deviceName',
                           style: Theme.of(context).textTheme.headlineLarge,
                         ),
-                        const Text(
+                        Text(
                           'Solo lleva unos segundos.',
-                          style: TextStyle(color: AppColors.muted),
+                          style: TextStyle(
+                            color: SitePalette.of(context).muted,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded),
+                    icon: Icon(Icons.close_rounded),
                   ),
                 ],
               ),
-              const SizedBox(height: 30),
+              SizedBox(height: 30),
               for (var i = 0; i < _steps.length; i++)
                 _InstallStep(
                   number: i + 1,
@@ -383,14 +387,14 @@ class _InstallInstructions extends StatelessWidget {
                   title: _steps[i].$2,
                   description: _steps[i].$3,
                 ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.all(18),
+                padding: EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: AppColors.yellow.withValues(alpha: .14),
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(Icons.offline_bolt_outlined),
                     SizedBox(width: 12),
@@ -425,7 +429,7 @@ class _InstallStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 20),
+    padding: EdgeInsets.only(bottom: 20),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -433,12 +437,18 @@ class _InstallStep extends StatelessWidget {
           width: 50,
           height: 50,
           decoration: BoxDecoration(
-            color: AppColors.ink,
+            color: SitePalette.of(context).ink,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Stack(
             children: [
-              Center(child: Icon(icon, color: AppColors.paper, size: 23)),
+              Center(
+                child: Icon(
+                  icon,
+                  color: SitePalette.of(context).paper,
+                  size: 23,
+                ),
+              ),
               Positioned(
                 right: 4,
                 top: 3,
@@ -446,30 +456,30 @@ class _InstallStep extends StatelessWidget {
                   width: 16,
                   height: 16,
                   alignment: Alignment.center,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.yellow,
                     shape: BoxShape.circle,
                   ),
                   child: Text(
                     '$number',
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900),
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(width: 15),
+        SizedBox(width: 15),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 4),
-              Text(description, style: const TextStyle(color: AppColors.muted)),
+              SizedBox(height: 4),
+              Text(
+                description,
+                style: TextStyle(color: SitePalette.of(context).muted),
+              ),
             ],
           ),
         ),

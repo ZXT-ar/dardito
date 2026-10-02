@@ -1,3 +1,4 @@
+import '../../core/theme/site_palette.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
@@ -20,7 +21,7 @@ class HomeExploreInvitation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = compact && !showCompass
-        ? const Padding(
+        ? Padding(
             padding: EdgeInsets.symmetric(vertical: 14),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -32,14 +33,16 @@ class HomeExploreInvitation extends StatelessWidget {
                       fontFamily: 'Lora',
                       fontWeight: FontWeight.w700,
                       fontSize: 25,
-                      color: AppColors.ink,
+                      color: SitePalette.of(context).ink,
                     ),
                   ),
                 ),
                 SizedBox(width: 8),
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: Color(0xFF876015),
+                  color: (SitePalette.of(context).dark
+                      ? SitePalette.of(context).rust
+                      : Color(0xFF876015)),
                   size: 30,
                 ),
               ],
@@ -50,7 +53,7 @@ class HomeExploreInvitation extends StatelessWidget {
             aspectRatio: 360 / 205,
             child: Stack(
               children: [
-                const Positioned.fill(
+                Positioned.fill(
                   child: CustomPaint(painter: _FoldedMapPainter()),
                 ),
                 Positioned(
@@ -79,16 +82,16 @@ class HomeExploreInvitation extends StatelessWidget {
                                 fontWeight: FontWeight.w700,
                                 fontSize: 25,
                                 height: 1.12,
-                                color: AppColors.ink,
+                                color: SitePalette.of(context).ink,
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            const CircleAvatar(
+                            SizedBox(height: 12),
+                            CircleAvatar(
                               radius: 20,
                               backgroundColor: AppColors.yellow,
                               child: Icon(
                                 Icons.chevron_right_rounded,
-                                color: AppColors.ink,
+                                color: SitePalette.of(context).ink,
                               ),
                             ),
                           ],
@@ -127,7 +130,7 @@ class HomeExploreInvitation extends StatelessWidget {
                           height: 520,
                           child: ShaderMask(
                             blendMode: BlendMode.dstIn,
-                            shaderCallback: (bounds) => const LinearGradient(
+                            shaderCallback: (bounds) => LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               stops: [0, .48, .675, 1],
@@ -160,8 +163,10 @@ class HomeExploreInvitation extends StatelessWidget {
                                 fontSize: 27,
                                 height: 1,
                                 color: progress >= .99
-                                    ? const Color(0xFF876015)
-                                    : AppColors.ink,
+                                    ? (SitePalette.of(context).dark
+                                          ? SitePalette.of(context).rust
+                                          : Color(0xFF876015))
+                                    : SitePalette.of(context).ink,
                                 shadows: progress >= .99
                                     ? [
                                         Shadow(
@@ -174,10 +179,12 @@ class HomeExploreInvitation extends StatelessWidget {
                                     : null,
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            const Icon(
+                            SizedBox(width: 10),
+                            Icon(
                               Icons.chevron_right_rounded,
-                              color: Color(0xFF876015),
+                              color: (SitePalette.of(context).dark
+                                  ? SitePalette.of(context).rust
+                                  : Color(0xFF876015)),
                               size: 32,
                             ),
                           ],
@@ -216,14 +223,15 @@ class HomeExploreInvitation extends StatelessWidget {
 }
 
 class CompassPainter extends CustomPainter {
-  const CompassPainter({required this.angle});
+  const CompassPainter({required this.angle, this.dark = false});
+  final bool dark;
   final double angle;
   @override
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
     final r = size.width / 2 - 9;
     final line = Paint()
-      ..color = const Color(0xFF746349)
+      ..color = (dark ? const Color(0xFFBDB7A9) : const Color(0xFF746349))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.4;
     for (final ratio in [1.0, .965, .80, .69]) {
@@ -252,9 +260,7 @@ class CompassPainter extends CustomPainter {
       canvas.drawPath(
         p,
         Paint()
-          ..color = const Color(
-            0xFFBAAD90,
-          ).withValues(alpha: i.isEven ? .88 : .4),
+          ..color = Color(0xFFBAAD90).withValues(alpha: i.isEven ? .88 : .4),
       );
       canvas.drawPath(
         Path()
@@ -262,7 +268,7 @@ class CompassPainter extends CustomPainter {
           ..lineTo(0, 20)
           ..lineTo(-14, 0)
           ..close(),
-        Paint()..color = const Color(0xFF535D49),
+        Paint()..color = Color(0xFF535D49),
       );
       canvas.restore();
     }
@@ -275,10 +281,10 @@ class CompassPainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(
           text: entry.$1,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Lora',
             fontSize: 25,
-            color: Color(0xFF58472F),
+            color: dark ? const Color(0xFFBDB7A9) : Color(0xFF58472F),
           ),
         ),
         textDirection: TextDirection.ltr,
@@ -304,7 +310,7 @@ class CompassPainter extends CustomPainter {
         ..lineTo(0, -3)
         ..lineTo(-17, 12)
         ..close(),
-      Paint()..color = const Color(0xFFB88508),
+      Paint()..color = Color(0xFFB88508),
     );
     canvas.restore();
     canvas.drawCircle(c, 17, Paint()..color = AppColors.cream);
@@ -312,7 +318,8 @@ class CompassPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(CompassPainter oldDelegate) => oldDelegate.angle != angle;
+  bool shouldRepaint(CompassPainter oldDelegate) =>
+      oldDelegate.angle != angle || oldDelegate.dark != dark;
 }
 
 class _FoldedMapPainter extends CustomPainter {
@@ -322,30 +329,10 @@ class _FoldedMapPainter extends CustomPainter {
     canvas.save();
     canvas.scale(size.width / 360, size.height / 205);
     final folds = [
-      [
-        const Offset(6, 42),
-        const Offset(77, 63),
-        const Offset(77, 190),
-        const Offset(6, 168),
-      ],
-      [
-        const Offset(77, 63),
-        const Offset(146, 34),
-        const Offset(146, 162),
-        const Offset(77, 190),
-      ],
-      [
-        const Offset(146, 34),
-        const Offset(216, 55),
-        const Offset(216, 181),
-        const Offset(146, 162),
-      ],
-      [
-        const Offset(216, 55),
-        const Offset(349, 31),
-        const Offset(355, 167),
-        const Offset(216, 181),
-      ],
+      [Offset(6, 42), Offset(77, 63), Offset(77, 190), Offset(6, 168)],
+      [Offset(77, 63), Offset(146, 34), Offset(146, 162), Offset(77, 190)],
+      [Offset(146, 34), Offset(216, 55), Offset(216, 181), Offset(146, 162)],
+      [Offset(216, 55), Offset(349, 31), Offset(355, 167), Offset(216, 181)],
     ];
     for (var i = 0; i < folds.length; i++) {
       final shape = Path()..addPolygon(folds[i], true);
@@ -354,9 +341,9 @@ class _FoldedMapPainter extends CustomPainter {
         shape,
         Paint()
           ..color = [
-            const Color(0xFFF5EFDF),
-            const Color(0xFFD6CFBA),
-            const Color(0xFFECE5D2),
+            Color(0xFFF5EFDF),
+            Color(0xFFD6CFBA),
+            Color(0xFFECE5D2),
             AppColors.cream,
           ][i],
       );
@@ -364,7 +351,7 @@ class _FoldedMapPainter extends CustomPainter {
         canvas.save();
         canvas.clipPath(shape);
         final streets = Paint()
-          ..color = const Color(0xFF858978)
+          ..color = Color(0xFF858978)
           ..strokeWidth = .65
           ..style = PaintingStyle.stroke;
         for (double x = 0; x < 240; x += 13) {
@@ -375,25 +362,25 @@ class _FoldedMapPainter extends CustomPainter {
         }
         streets
           ..strokeWidth = 3
-          ..color = const Color(0xFFB1B19A);
-        canvas.drawLine(const Offset(0, 180), const Offset(200, 40), streets);
-        canvas.drawLine(const Offset(10, 50), const Offset(220, 175), streets);
+          ..color = Color(0xFFB1B19A);
+        canvas.drawLine(Offset(0, 180), Offset(200, 40), streets);
+        canvas.drawLine(Offset(10, 50), Offset(220, 175), streets);
         canvas.drawCircle(
-          const Offset(110, 105),
+          Offset(110, 105),
           13,
-          Paint()..color = const Color(0xFFC2C3A5),
+          Paint()..color = Color(0xFFC2C3A5),
         );
         canvas.restore();
       }
     }
     for (final marker in [
-      (const Offset(53, 81), AppColors.yellow),
-      (const Offset(125, 45), const Color(0xFF785780)),
-      (const Offset(185, 111), AppColors.yellow),
+      (Offset(53, 81), AppColors.yellow),
+      (Offset(125, 45), Color(0xFF785780)),
+      (Offset(185, 111), AppColors.yellow),
     ]) {
       final tip = marker.$1;
       canvas.drawOval(
-        Rect.fromCenter(center: tip + const Offset(2, 2), width: 22, height: 6),
+        Rect.fromCenter(center: tip + Offset(2, 2), width: 22, height: 6),
         Paint()..color = Colors.black.withValues(alpha: .18),
       );
       final pin = Path()
@@ -406,10 +393,7 @@ class _FoldedMapPainter extends CustomPainter {
           tip.dx - 14,
           tip.dy - 23,
         )
-        ..arcToPoint(
-          tip + const Offset(14, -23),
-          radius: const Radius.circular(14),
-        )
+        ..arcToPoint(tip + Offset(14, -23), radius: Radius.circular(14))
         ..cubicTo(
           tip.dx + 14,
           tip.dy - 16,
@@ -422,12 +406,12 @@ class _FoldedMapPainter extends CustomPainter {
       canvas.drawShadow(pin, Colors.black54, 3, false);
       canvas.drawPath(pin, Paint()..color = marker.$2);
       canvas.drawCircle(
-        tip + const Offset(0, -23),
+        tip + Offset(0, -23),
         7,
         Paint()..color = AppColors.cream,
       );
       canvas.drawCircle(
-        tip + const Offset(0, -23),
+        tip + Offset(0, -23),
         3,
         Paint()..color = AppColors.ink,
       );

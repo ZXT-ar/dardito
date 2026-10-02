@@ -1,7 +1,7 @@
 [
   {
     "elementType": "geometry",
-    "stylers": [{ "color": "#f4efe4" }]
+    "stylers": [{ "color": "#f7efda" }]
   },
   {
     "elementType": "labels.text.fill",
@@ -9,7 +9,7 @@
   },
   {
     "elementType": "labels.text.stroke",
-    "stylers": [{ "color": "#fffbf2" }]
+    "stylers": [{ "color": "#f7efda" }]
   },
   {
     "featureType": "administrative",

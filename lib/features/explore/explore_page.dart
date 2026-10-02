@@ -1,4 +1,6 @@
+import '../../core/theme/site_palette.dart';
 import 'package:flutter/material.dart';
+import '../../core/theme/theme_controller.dart';
 import 'package:flutter/services.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
@@ -63,7 +65,9 @@ class _ExplorePageState extends State<ExplorePage> {
   bool _desktopFiltersExpanded = false;
   String? _darkMapStyle;
   String? _lightMapStyle;
-  bool _lightMapEnabled = false;
+  bool _localLightMap = true;
+  bool get _lightMapEnabled =>
+      !(SiteThemeScope.maybeOf(context)?.dark ?? !_localLightMap);
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -149,30 +153,36 @@ class _ExplorePageState extends State<ExplorePage> {
         controlsTop + (wideDesktop ? 76.0 : (narrow ? 126.0 : 92.0));
 
     return ColoredBox(
-      color: AppColors.navy,
+      color: SitePalette.of(context).navy,
       child: Stack(
         children: [
           Positioned.fill(
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 420),
+              duration: Duration(milliseconds: 420),
               switchInCurve: Curves.easeOutCubic,
               child: _mapMode
                   ? _MapView(
-                      key: const ValueKey('map'),
+                      key: ValueKey('map'),
                       stories: _mapFiltered,
                       selected: _selected,
                       topInset: contentInset,
                       style: _lightMapEnabled ? _lightMapStyle : _darkMapStyle,
                       lightMapEnabled: _lightMapEnabled,
-                      onToggleMapTheme: () =>
-                          setState(() => _lightMapEnabled = !_lightMapEnabled),
+                      onToggleMapTheme: () {
+                        final shared = SiteThemeScope.maybeOf(context);
+                        if (shared != null) {
+                          shared.toggle();
+                        } else {
+                          setState(() => _localLightMap = !_localLightMap);
+                        }
+                      },
                       onSelect: (s) => setState(() => _selected = s),
                       onClose: () => setState(() => _selected = null),
                       onDetails: (s) => showStoryDetails(context, s),
                       onAsk: widget.onAskDardito,
                     )
                   : _GridView(
-                      key: const ValueKey('grid'),
+                      key: ValueKey('grid'),
                       stories: _gridFiltered,
                       topInset: contentInset,
                       searchController: _searchController,
@@ -197,7 +207,7 @@ class _ExplorePageState extends State<ExplorePage> {
               child: Align(
                 alignment: wideDesktop ? Alignment.topRight : Alignment.topLeft,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1080),
+                  constraints: BoxConstraints(maxWidth: 1080),
                   child: _ExploreControls(
                     narrow: narrow,
                     desktopCompact: wideDesktop,
@@ -321,14 +331,14 @@ class _ExploreControls extends StatelessWidget {
       );
     }
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 360),
+      duration: Duration(milliseconds: 360),
       curve: Curves.easeOutCubic,
       padding: EdgeInsets.all(narrow ? 12 : 16),
       decoration: BoxDecoration(
-        color: AppColors.navy.withValues(alpha: .90),
+        color: SitePalette.of(context).navy.withValues(alpha: .90),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: .14)),
-        boxShadow: const [
+        border: Border.all(color: SitePalette.of(context).line),
+        boxShadow: [
           BoxShadow(
             color: Colors.black38,
             blurRadius: 30,
@@ -348,14 +358,14 @@ class _ExploreControls extends StatelessWidget {
                   color: AppColors.yellow,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.explore_rounded),
+                child: Icon(Icons.explore_rounded),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'MAPA DE HISTORIAS',
                       maxLines: 1,
                       overflow: TextOverflow.fade,
@@ -367,14 +377,14 @@ class _ExploreControls extends StatelessWidget {
                         letterSpacing: 1.25,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       'Explorá La Plata',
                       maxLines: 1,
                       overflow: TextOverflow.fade,
                       softWrap: false,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.cream,
+                        color: SitePalette.of(context).ink,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -387,13 +397,13 @@ class _ExploreControls extends StatelessWidget {
                   activeFilters: activeFilters,
                   onTap: onToggleFilters,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
               ],
               _ModeToggle(value: mapMode, onChanged: onModeChanged),
             ],
           ),
           if (narrow) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
@@ -404,19 +414,19 @@ class _ExploreControls extends StatelessWidget {
                     onTap: onToggleFilters,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 _ResultCount(resultCount: resultCount),
               ],
             ),
           ],
           ClipRect(
             child: AnimatedSize(
-              duration: const Duration(milliseconds: 360),
+              duration: Duration(milliseconds: 360),
               curve: Curves.easeOutCubic,
               alignment: Alignment.topCenter,
               child: expanded
                   ? Padding(
-                      padding: const EdgeInsets.only(top: 14),
+                      padding: EdgeInsets.only(top: 14),
                       child: Wrap(
                         spacing: 9,
                         runSpacing: 9,
@@ -473,16 +483,16 @@ class _ExploreControls extends StatelessWidget {
                           if (activeFilters > 0)
                             TextButton.icon(
                               onPressed: onClear,
-                              icon: const Icon(Icons.refresh_rounded),
-                              label: const Text('Restablecer'),
+                              icon: Icon(Icons.refresh_rounded),
+                              label: Text('Restablecer'),
                               style: TextButton.styleFrom(
-                                foregroundColor: AppColors.cream,
+                                foregroundColor: SitePalette.of(context).ink,
                               ),
                             ),
                         ],
                       ),
                     )
-                  : const SizedBox(width: double.infinity),
+                  : SizedBox(width: double.infinity),
             ),
           ),
         ],
@@ -528,17 +538,17 @@ class _DesktopExploreControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AnimatedSize(
-    duration: const Duration(milliseconds: 320),
+    duration: Duration(milliseconds: 320),
     curve: Curves.easeOutCubic,
     alignment: Alignment.topRight,
     child: Container(
       width: 440,
-      padding: const EdgeInsets.all(7),
+      padding: EdgeInsets.all(7),
       decoration: BoxDecoration(
-        color: AppColors.navy.withValues(alpha: .91),
+        color: SitePalette.of(context).navy.withValues(alpha: .91),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: .14)),
-        boxShadow: const [
+        border: Border.all(color: SitePalette.of(context).line),
+        boxShadow: [
           BoxShadow(
             color: Colors.black38,
             blurRadius: 20,
@@ -553,14 +563,14 @@ class _DesktopExploreControls extends StatelessWidget {
           Row(
             children: [
               _ResultCount(resultCount: resultCount),
-              const Spacer(),
+              Spacer(),
               _FiltersControl(
                 expanded: expanded,
                 activeFilters: activeFilters,
                 onTap: onToggleFilters,
                 compact: true,
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               _ModeToggle(
                 value: mapMode,
                 onChanged: onModeChanged,
@@ -569,7 +579,7 @@ class _DesktopExploreControls extends StatelessWidget {
             ],
           ),
           if (expanded) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             _FilterMenu(
               label: category == null
                   ? 'Todas las categorías'
@@ -587,7 +597,7 @@ class _DesktopExploreControls extends StatelessWidget {
               value: category,
               onSelected: onCategoryChanged,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _FilterMenu(
               label: neighborhood ?? 'Todos los barrios',
               icon: Icons.location_on_outlined,
@@ -598,7 +608,7 @@ class _DesktopExploreControls extends StatelessWidget {
               value: neighborhood,
               onSelected: onNeighborhoodChanged,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _FilterMenu(
               label: period ?? 'Todos los períodos',
               icon: Icons.calendar_month_outlined,
@@ -609,17 +619,17 @@ class _DesktopExploreControls extends StatelessWidget {
               value: period,
               onSelected: onPeriodChanged,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
-                const Spacer(),
+                Spacer(),
                 if (activeFilters > 0)
                   TextButton.icon(
                     onPressed: onClear,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Restablecer'),
+                    icon: Icon(Icons.refresh_rounded),
+                    label: Text('Restablecer'),
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.cream,
+                      foregroundColor: SitePalette.of(context).ink,
                     ),
                   ),
               ],
@@ -655,7 +665,7 @@ class _FiltersControl extends StatelessWidget {
       children: [
         Icon(Icons.tune_rounded, size: compact ? 15 : 19),
         SizedBox(width: compact ? 5 : 7),
-        Text('Filtros', style: compact ? const TextStyle(fontSize: 12) : null),
+        Text('Filtros', style: compact ? TextStyle(fontSize: 12) : null),
         if (activeFilters > 0) ...[
           SizedBox(width: compact ? 5 : 7),
           Container(
@@ -669,14 +679,14 @@ class _FiltersControl extends StatelessWidget {
             ),
             child: Text(
               '$activeFilters',
-              style: compact ? const TextStyle(fontSize: 11) : null,
+              style: compact ? TextStyle(fontSize: 11) : null,
             ),
           ),
         ],
         SizedBox(width: compact ? 2 : 3),
         AnimatedRotation(
           turns: expanded ? .5 : 0,
-          duration: const Duration(milliseconds: 300),
+          duration: Duration(milliseconds: 300),
           child: Icon(
             Icons.keyboard_arrow_down_rounded,
             size: compact ? 18 : 24,
@@ -694,16 +704,16 @@ class _ResultCount extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 11),
+    padding: EdgeInsets.symmetric(horizontal: 11, vertical: 11),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: .10),
+      color: SitePalette.of(context).inset,
       borderRadius: BorderRadius.circular(12),
     ),
     child: Text(
       '$resultCount ${resultCount == 1 ? 'historia' : 'historias'}',
       maxLines: 1,
-      style: const TextStyle(
-        color: AppColors.cream,
+      style: TextStyle(
+        color: SitePalette.of(context).ink,
         fontSize: 12,
         fontWeight: FontWeight.w700,
       ),
@@ -727,7 +737,7 @@ class _RoundControl extends StatelessWidget {
   Widget build(BuildContext context) => Tooltip(
     message: tooltip,
     child: Material(
-      color: AppColors.paper,
+      color: SitePalette.of(context).paper,
       borderRadius: BorderRadius.circular(compact ? 11 : 15),
       child: InkWell(
         onTap: onTap,
@@ -738,7 +748,7 @@ class _RoundControl extends StatelessWidget {
             vertical: compact ? 7 : 11,
           ),
           child: DefaultTextStyle.merge(
-            style: const TextStyle(fontWeight: FontWeight.w800),
+            style: TextStyle(fontWeight: FontWeight.w800),
             child: child,
           ),
         ),
@@ -761,7 +771,7 @@ class _ModeToggle extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: EdgeInsets.all(compact ? 2 : 3),
     decoration: BoxDecoration(
-      color: AppColors.paper,
+      color: SitePalette.of(context).paper,
       borderRadius: BorderRadius.circular(compact ? 11 : 15),
     ),
     child: Row(
@@ -807,7 +817,7 @@ class _ModeButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(compact ? 8 : 12),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: Duration(milliseconds: 220),
         padding: EdgeInsets.all(compact ? 6 : 9),
         decoration: BoxDecoration(
           color: selected ? AppColors.yellow : Colors.transparent,
@@ -838,18 +848,22 @@ class _FilterMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MenuAnchor(
     crossAxisUnconstrained: false,
-    alignmentOffset: const Offset(0, 6),
+    alignmentOffset: Offset(0, 6),
     useRootOverlay: true,
     style: MenuStyle(
-      backgroundColor: const WidgetStatePropertyAll(AppColors.paper),
-      surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-      elevation: const WidgetStatePropertyAll(18),
-      shadowColor: WidgetStatePropertyAll(AppColors.ink.withValues(alpha: .28)),
-      padding: const WidgetStatePropertyAll(EdgeInsets.all(6)),
+      backgroundColor: WidgetStatePropertyAll(SitePalette.of(context).paper),
+      surfaceTintColor: WidgetStatePropertyAll(Colors.transparent),
+      elevation: WidgetStatePropertyAll(18),
+      shadowColor: WidgetStatePropertyAll(
+        SitePalette.of(context).ink.withValues(alpha: .28),
+      ),
+      padding: WidgetStatePropertyAll(EdgeInsets.all(6)),
       shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: AppColors.ink.withValues(alpha: .10)),
+          side: BorderSide(
+            color: SitePalette.of(context).ink.withValues(alpha: .10),
+          ),
         ),
       ),
     ),
@@ -858,15 +872,15 @@ class _FilterMenu extends StatelessWidget {
       return MenuItemButton(
         onPressed: () => onSelected(entry.value),
         style: ButtonStyle(
-          minimumSize: const WidgetStatePropertyAll(Size.fromHeight(42)),
-          padding: const WidgetStatePropertyAll(
+          minimumSize: WidgetStatePropertyAll(Size.fromHeight(42)),
+          padding: WidgetStatePropertyAll(
             EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           ),
           backgroundColor: WidgetStateProperty.resolveWith(
             (states) => selected
                 ? AppColors.yellow.withValues(alpha: .18)
                 : states.contains(WidgetState.hovered)
-                ? AppColors.ink.withValues(alpha: .055)
+                ? SitePalette.of(context).ink.withValues(alpha: .055)
                 : Colors.transparent,
           ),
           shape: WidgetStatePropertyAll(
@@ -887,12 +901,12 @@ class _FilterMenu extends StatelessWidget {
             ),
             if (entry.value != null &&
                 descriptions.containsKey(entry.value)) ...[
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Tooltip(
                 message: descriptions[entry.value]!,
                 triggerMode: TooltipTriggerMode.tap,
-                showDuration: const Duration(seconds: 5),
-                child: const SizedBox(
+                showDuration: Duration(seconds: 5),
+                child: SizedBox(
                   width: 30,
                   height: 30,
                   child: Icon(Icons.info_outline_rounded, size: 17),
@@ -900,43 +914,45 @@ class _FilterMenu extends StatelessWidget {
               ),
             ],
             if (selected) ...[
-              const SizedBox(width: 12),
-              const Icon(Icons.check_rounded, size: 18),
+              SizedBox(width: 12),
+              Icon(Icons.check_rounded, size: 18),
             ],
           ],
         ),
       );
     }).toList(),
     builder: (context, controller, child) => Material(
-      color: AppColors.paper,
+      color: SitePalette.of(context).paper,
       borderRadius: BorderRadius.circular(9),
       child: InkWell(
         onTap: () => controller.isOpen ? controller.close() : controller.open(),
         borderRadius: BorderRadius.circular(9),
         child: Container(
           height: 42,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(9),
-            border: Border.all(color: AppColors.ink.withValues(alpha: .10)),
+            border: Border.all(
+              color: SitePalette.of(context).ink.withValues(alpha: .10),
+            ),
           ),
           child: Row(
             children: [
               Icon(icon, size: 18),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               AnimatedRotation(
                 turns: controller.isOpen ? .5 : 0,
-                duration: const Duration(milliseconds: 180),
-                child: const Icon(Icons.keyboard_arrow_down_rounded, size: 19),
+                duration: Duration(milliseconds: 180),
+                child: Icon(Icons.keyboard_arrow_down_rounded, size: 19),
               ),
             ],
           ),
@@ -991,9 +1007,9 @@ class _MapViewState extends State<_MapView> {
     final selected = await showModalBottomSheet<CityStory>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.paper,
-      constraints: const BoxConstraints(maxWidth: 640),
-      shape: const RoundedRectangleBorder(
+      backgroundColor: SitePalette.of(context).paper,
+      constraints: BoxConstraints(maxWidth: 640),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (sheetContext) => PointerInterceptor(
@@ -1003,7 +1019,7 @@ class _MapViewState extends State<_MapView> {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 12, 8),
+                  padding: EdgeInsets.fromLTRB(24, 16, 12, 8),
                   child: Row(
                     children: [
                       Expanded(
@@ -1016,29 +1032,29 @@ class _MapViewState extends State<_MapView> {
                                 sheetContext,
                               ).textTheme.titleLarge,
                             ),
-                            const SizedBox(height: 6),
-                            const Text('Elegí una para descubrir su historia.'),
+                            SizedBox(height: 6),
+                            Text('Elegí una para descubrir su historia.'),
                           ],
                         ),
                       ),
                       IconButton(
                         tooltip: 'Cerrar historias de la zona',
                         onPressed: () => Navigator.pop(sheetContext),
-                        icon: const Icon(Icons.close),
+                        icon: Icon(Icons.close),
                       ),
                     ],
                   ),
                 ),
-                const Divider(),
+                Divider(),
                 Expanded(
                   child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                    padding: EdgeInsets.fromLTRB(12, 0, 12, 16),
                     itemCount: sorted.length,
-                    separatorBuilder: (_, index) => const Divider(height: 1),
+                    separatorBuilder: (_, index) => Divider(height: 1),
                     itemBuilder: (_, index) {
                       final story = sorted[index];
                       return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
+                        contentPadding: EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 10,
                         ),
@@ -1053,14 +1069,14 @@ class _MapViewState extends State<_MapView> {
                         ),
                         title: Text(
                           story.title,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                         subtitle: Text(
                           '${_categoryLabel(story.category.id)} · ${story.neighborhood}\n${story.shortStory}',
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        trailing: const Icon(Icons.arrow_forward_rounded),
+                        trailing: Icon(Icons.arrow_forward_rounded),
                         onTap: () => Navigator.pop(sheetContext, story),
                       );
                     },
@@ -1097,7 +1113,7 @@ class _MapViewState extends State<_MapView> {
             ),
           ),
           AnimatedPositioned(
-            duration: const Duration(milliseconds: 360),
+            duration: Duration(milliseconds: 360),
             curve: Curves.easeOutCubic,
             right: showPanel && widget.selected != null ? 430 : 20,
             bottom: showPanel ? 20 : 116,
@@ -1111,11 +1127,11 @@ class _MapViewState extends State<_MapView> {
                         : 'Usar mapa claro',
                     onPressed: widget.onToggleMapTheme,
                     backgroundColor: widget.lightMapEnabled
-                        ? AppColors.ink
-                        : AppColors.paper,
+                        ? SitePalette.of(context).ink
+                        : SitePalette.of(context).paper,
                     foregroundColor: widget.lightMapEnabled
-                        ? AppColors.paper
-                        : AppColors.ink,
+                        ? SitePalette.of(context).paper
+                        : SitePalette.of(context).ink,
                     child: Icon(
                       widget.lightMapEnabled
                           ? Icons.dark_mode_rounded
@@ -1123,24 +1139,24 @@ class _MapViewState extends State<_MapView> {
                       size: 22,
                       color: widget.lightMapEnabled
                           ? Colors.white
-                          : AppColors.ink,
+                          : SitePalette.of(context).ink,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   FloatingActionButton.small(
                     heroTag: 'plus',
                     tooltip: 'Acercar',
                     onPressed: () => _controller?.zoomIn(),
-                    backgroundColor: AppColors.paper,
-                    child: const Icon(Icons.add),
+                    backgroundColor: SitePalette.of(context).paper,
+                    child: Icon(Icons.add, color: SitePalette.of(context).ink),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   FloatingActionButton.small(
                     heroTag: 'minus',
                     tooltip: 'Alejar',
                     onPressed: () => _controller?.zoomOut(),
-                    backgroundColor: AppColors.paper,
-                    child: const Icon(Icons.remove),
+                    backgroundColor: SitePalette.of(context).paper,
+                    child: Icon(Icons.remove, color: SitePalette.of(context).ink),
                   ),
                 ],
               ),
@@ -1153,21 +1169,21 @@ class _MapViewState extends State<_MapView> {
               bottom: 82,
               child: PointerInterceptor(
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 360),
+                  duration: Duration(milliseconds: 360),
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
                   transitionBuilder: (child, animation) => FadeTransition(
                     opacity: animation,
                     child: SlideTransition(
                       position: Tween(
-                        begin: const Offset(.12, 0),
+                        begin: Offset(.12, 0),
                         end: Offset.zero,
                       ).animate(animation),
                       child: child,
                     ),
                   ),
                   child: widget.selected == null
-                      ? const SizedBox.shrink(key: ValueKey('no-story'))
+                      ? SizedBox.shrink(key: ValueKey('no-story'))
                       : SizedBox(
                           key: ValueKey(widget.selected!.id),
                           width: 390,
@@ -1235,10 +1251,10 @@ class _StoryPanel extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
-      color: AppColors.paper,
+      color: SitePalette.of(context).paper,
       borderRadius: BorderRadius.circular(28),
-      border: Border.all(color: Colors.white.withValues(alpha: .8)),
-      boxShadow: const [
+      border: Border.all(color: SitePalette.of(context).line),
+      boxShadow: [
         BoxShadow(color: Colors.black38, blurRadius: 34, offset: Offset(0, 14)),
       ],
     ),
@@ -1247,7 +1263,7 @@ class _StoryPanel extends StatelessWidget {
         Container(height: 8, color: story.category.color),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+            padding: EdgeInsets.fromLTRB(24, 18, 24, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1265,15 +1281,15 @@ class _StoryPanel extends StatelessWidget {
                         color: story.category.color,
                       ),
                     ),
-                    const Spacer(),
+                    Spacer(),
                     IconButton.filledTonal(
                       tooltip: 'Cerrar historia',
                       onPressed: onClose,
-                      icon: const Icon(Icons.close_rounded),
+                      icon: Icon(Icons.close_rounded),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Text(
                   story.category.label.toUpperCase(),
                   style: TextStyle(
@@ -1283,38 +1299,39 @@ class _StoryPanel extends StatelessWidget {
                     fontSize: 10,
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   story.title,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
-                const SizedBox(height: 5),
+                SizedBox(height: 5),
                 Text(
                   story.subtitle,
-                  style: const TextStyle(
-                    color: AppColors.muted,
+                  style: TextStyle(
+                    color: SitePalette.of(context).muted,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 7,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                   decoration: BoxDecoration(
-                    color: AppColors.green.withValues(alpha: .10),
+                    color: SitePalette.of(context).green.withValues(alpha: .10),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(evidenceIcon, size: 16, color: AppColors.green),
-                      const SizedBox(width: 6),
+                      Icon(
+                        evidenceIcon,
+                        size: 16,
+                        color: SitePalette.of(context).green,
+                      ),
+                      SizedBox(width: 6),
                       Text(
                         evidenceLabel,
-                        style: const TextStyle(
-                          color: AppColors.green,
+                        style: TextStyle(
+                          color: SitePalette.of(context).green,
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
                         ),
@@ -1322,12 +1339,15 @@ class _StoryPanel extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Text(
                   story.shortStory,
-                  style: const TextStyle(color: AppColors.muted, height: 1.5),
+                  style: TextStyle(
+                    color: SitePalette.of(context).muted,
+                    height: 1.5,
+                  ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -1346,21 +1366,21 @@ class _StoryPanel extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: () => onDetails(story),
-                    child: const Text('Leer historia completa'),
+                    child: Text('Leer historia completa'),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
                   child: TextButton.icon(
                     onPressed: () => onAsk(story),
-                    icon: const Icon(Icons.chat_bubble_outline),
-                    label: const Text('Preguntarle a Dardito'),
+                    icon: Icon(Icons.chat_bubble_outline),
+                    label: Text('Preguntarle a Dardito'),
                   ),
                 ),
               ],
@@ -1379,17 +1399,17 @@ class _StoryFact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     decoration: BoxDecoration(
-      color: AppColors.ink.withValues(alpha: .055),
+      color: SitePalette.of(context).ink.withValues(alpha: .055),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 15),
-        const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        SizedBox(width: 6),
+        Text(label, style: TextStyle(fontWeight: FontWeight.w700)),
       ],
     ),
   );
@@ -1437,7 +1457,7 @@ class _GridViewState extends State<_GridView> {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         0,
-        duration: const Duration(milliseconds: 360),
+        duration: Duration(milliseconds: 360),
         curve: Curves.easeOutCubic,
       );
     }
@@ -1445,7 +1465,7 @@ class _GridViewState extends State<_GridView> {
 
   @override
   Widget build(BuildContext context) => Container(
-    color: AppColors.cream,
+    color: SitePalette.of(context).canvas,
     child: LayoutBuilder(
       builder: (context, constraints) {
         final horizontalPadding = constraints.maxWidth < 600
@@ -1546,7 +1566,7 @@ class _GridViewState extends State<_GridView> {
                 ),
               )
             else
-              const SliverToBoxAdapter(child: SizedBox(height: 110)),
+              SliverToBoxAdapter(child: SizedBox(height: 110)),
           ],
         );
       },
@@ -1567,16 +1587,18 @@ class _GridSearchToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
+    padding: EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: AppColors.paper,
+      color: SitePalette.of(context).paper,
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: AppColors.ink.withValues(alpha: .10)),
+      border: Border.all(
+        color: SitePalette.of(context).ink.withValues(alpha: .10),
+      ),
       boxShadow: [
         BoxShadow(
-          color: AppColors.ink.withValues(alpha: .08),
+          color: SitePalette.of(context).ink.withValues(alpha: .08),
           blurRadius: 24,
-          offset: const Offset(0, 10),
+          offset: Offset(0, 10),
         ),
       ],
     ),
@@ -1613,7 +1635,7 @@ class _StorySearchField extends StatelessWidget {
           hintText: compact
               ? 'Buscar historias o barrios…'
               : 'Buscar por historia, barrio o palabra clave…',
-          prefixIcon: const Icon(Icons.search_rounded, size: 21),
+          prefixIcon: Icon(Icons.search_rounded, size: 21),
           suffixIcon: query.trim().isEmpty
               ? null
               : IconButton(
@@ -1622,22 +1644,26 @@ class _StorySearchField extends StatelessWidget {
                     controller.clear();
                     onChanged('');
                   },
-                  icon: const Icon(Icons.close_rounded, size: 19),
+                  icon: Icon(Icons.close_rounded, size: 19),
                 ),
           filled: true,
-          fillColor: AppColors.cream.withValues(alpha: .68),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+          fillColor: SitePalette.of(context).inset.withValues(alpha: .68),
+          contentPadding: EdgeInsets.symmetric(horizontal: 14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppColors.ink.withValues(alpha: .12)),
+            borderSide: BorderSide(
+              color: SitePalette.of(context).ink.withValues(alpha: .12),
+            ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppColors.ink.withValues(alpha: .12)),
+            borderSide: BorderSide(
+              color: SitePalette.of(context).ink.withValues(alpha: .12),
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.yellow, width: 2),
+            borderSide: BorderSide(color: AppColors.yellow, width: 2),
           ),
         ),
       ),
@@ -1668,8 +1694,8 @@ class _GridResultSummary extends StatelessWidget {
           total == 0
               ? 'Sin resultados'
               : 'Mostrando $start–$end de $total historias',
-          style: const TextStyle(
-            color: AppColors.muted,
+          style: TextStyle(
+            color: SitePalette.of(context).muted,
             fontSize: 13,
             fontWeight: FontWeight.w700,
           ),
@@ -1678,8 +1704,8 @@ class _GridResultSummary extends StatelessWidget {
       if (pageCount > 1)
         Text(
           'Página ${page + 1} de $pageCount',
-          style: const TextStyle(
-            color: AppColors.muted,
+          style: TextStyle(
+            color: SitePalette.of(context).muted,
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
@@ -1694,10 +1720,10 @@ class _EmptyGridResult extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(24, 48, 24, 150),
+    padding: EdgeInsets.fromLTRB(24, 48, 24, 150),
     child: Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
+        constraints: BoxConstraints(maxWidth: 460),
         child: Column(
           children: [
             Container(
@@ -1707,25 +1733,25 @@ class _EmptyGridResult extends StatelessWidget {
                 color: AppColors.yellow.withValues(alpha: .18),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.manage_search_rounded, size: 30),
+              child: Icon(Icons.manage_search_rounded, size: 30),
             ),
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
             Text(
               'No encontramos historias',
               style: Theme.of(context).textTheme.headlineMedium,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'Probá con otra palabra, período o tipo de historia.',
-              style: TextStyle(color: AppColors.muted),
+              style: TextStyle(color: SitePalette.of(context).muted),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
             OutlinedButton.icon(
               onPressed: onClear,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Restablecer filtros'),
+              icon: Icon(Icons.refresh_rounded),
+              label: Text('Restablecer filtros'),
             ),
           ],
         ),
@@ -1759,11 +1785,13 @@ class _GridPagination extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     decoration: BoxDecoration(
-      color: AppColors.paper,
+      color: SitePalette.of(context).paper,
       borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: AppColors.ink.withValues(alpha: .10)),
+      border: Border.all(
+        color: SitePalette.of(context).ink.withValues(alpha: .10),
+      ),
     ),
     child: Wrap(
       alignment: WrapAlignment.center,
@@ -1774,7 +1802,7 @@ class _GridPagination extends StatelessWidget {
         IconButton.outlined(
           tooltip: 'Página anterior',
           onPressed: page == 0 ? null : () => onChanged(page - 1),
-          icon: const Icon(Icons.arrow_back_rounded, size: 19),
+          icon: Icon(Icons.arrow_back_rounded, size: 19),
         ),
         for (final item in visiblePages)
           SizedBox(
@@ -1785,7 +1813,7 @@ class _GridPagination extends StatelessWidget {
                     onPressed: null,
                     style: FilledButton.styleFrom(
                       disabledBackgroundColor: AppColors.yellow,
-                      disabledForegroundColor: AppColors.ink,
+                      disabledForegroundColor: SitePalette.of(context).ink,
                       padding: EdgeInsets.zero,
                     ),
                     child: Text('${item + 1}'),
@@ -1799,7 +1827,7 @@ class _GridPagination extends StatelessWidget {
         IconButton.outlined(
           tooltip: 'Página siguiente',
           onPressed: page >= pageCount - 1 ? null : () => onChanged(page + 1),
-          icon: const Icon(Icons.arrow_forward_rounded, size: 19),
+          icon: Icon(Icons.arrow_forward_rounded, size: 19),
         ),
       ],
     ),

@@ -1,3 +1,4 @@
+import '../../core/theme/site_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -17,18 +18,18 @@ class MetaCompliancePage extends StatelessWidget {
       MetaComplianceDocument.dataDeletionInstructions => _dataDeletion,
     };
     return Material(
-      color: AppColors.cream,
+      color: SitePalette.of(context).cream,
       child: SingleChildScrollView(
         child: Column(
           children: [
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(0, 130, 0, 64),
-              decoration: const BoxDecoration(
+              padding: EdgeInsets.fromLTRB(0, 130, 0, 64),
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [AppColors.navy, Color(0xFF122B32)],
+                  colors: [SitePalette.of(context).navy, Color(0xFF122B32)],
                 ),
               ),
               child: MaxWidth(
@@ -36,25 +37,27 @@ class MetaCompliancePage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 900),
+                      constraints: BoxConstraints(maxWidth: 900),
                       child: Text(
                         content.title,
                         style: Theme.of(context).textTheme.displayLarge
                             ?.copyWith(
-                              color: AppColors.cream,
+                              color: SitePalette.of(context).cream,
                               fontSize: MediaQuery.sizeOf(context).width < 600
                                   ? 42
                                   : 62,
                             ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 760),
+                      constraints: BoxConstraints(maxWidth: 760),
                       child: Text(
                         content.summary,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppColors.cream.withValues(alpha: .76),
+                          color: SitePalette.of(
+                            context,
+                          ).cream.withValues(alpha: .76),
                           height: 1.6,
                         ),
                       ),
@@ -65,17 +68,17 @@ class MetaCompliancePage extends StatelessWidget {
             ),
             MaxWidth(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 58),
+                padding: EdgeInsets.symmetric(vertical: 58),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 900),
+                    constraints: BoxConstraints(maxWidth: 900),
                     child: _ComplianceBody(sections: content.sections),
                   ),
                 ),
               ),
             ),
-            const _ComplianceFooter(),
+            _ComplianceFooter(),
           ],
         ),
       ),
@@ -115,7 +118,7 @@ class _ComplianceSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 34),
+    padding: EdgeInsets.only(bottom: 34),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -129,24 +132,24 @@ class _ComplianceSection extends StatelessWidget {
           ),
           child: Text(
             number,
-            style: const TextStyle(
-              color: AppColors.green,
+            style: TextStyle(
+              color: SitePalette.of(context).green,
               fontSize: 11,
               fontWeight: FontWeight.w900,
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: 9),
+              SizedBox(height: 9),
               SelectableText(
                 body,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppColors.muted,
+                  color: SitePalette.of(context).muted,
                   height: 1.65,
                 ),
               ),
@@ -164,9 +167,9 @@ class _ComplianceFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
-    color: AppColors.ink,
-    padding: const EdgeInsets.symmetric(vertical: 42),
-    child: const MaxWidth(
+    color: SitePalette.of(context).ink,
+    padding: EdgeInsets.symmetric(vertical: 42),
+    child: MaxWidth(
       child: Wrap(
         alignment: WrapAlignment.spaceBetween,
         crossAxisAlignment: WrapCrossAlignment.center,
@@ -176,7 +179,7 @@ class _ComplianceFooter extends StatelessWidget {
           ProjectMark(compact: true),
           Text(
             'Consultas legales y solicitudes sobre datos\nlegal@dardito.ar',
-            style: TextStyle(color: Colors.white60, height: 1.6),
+            style: TextStyle(color: SitePalette.of(context).muted, height: 1.6),
           ),
         ],
       ),

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import '../../core/theme/theme_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -91,7 +92,8 @@ class _AssistantPageState extends State<AssistantPage> {
   bool _typing = false;
   bool _hasReply = false;
   bool _dark = false;
-  ReadingPalette get _palette => ReadingPalette(_dark);
+  ReadingPalette get _palette =>
+      ReadingPalette(SiteThemeScope.maybeOf(context)?.dark ?? _dark);
   final Map<_Message, GlobalKey> _messageKeys = {};
 
   void _showMessage(_Message message) {
@@ -351,7 +353,14 @@ class _AssistantPageState extends State<AssistantPage> {
                 _ChatHeader(
                   onNavigate: widget.onNavigate,
                   palette: _palette,
-                  onToggleMode: () => setState(() => _dark = !_dark),
+                  onToggleMode: () {
+                    final shared = SiteThemeScope.maybeOf(context);
+                    if (shared != null) {
+                      shared.toggle();
+                    } else {
+                      setState(() => _dark = !_dark);
+                    }
+                  },
                 ),
                 Expanded(
                   child: Row(

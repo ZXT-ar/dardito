@@ -1,3 +1,4 @@
+import '../../core/theme/site_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -20,18 +21,21 @@ class LegalPage extends StatelessWidget {
   Widget build(BuildContext context) {
     assert(initialDocument == LegalDocument.terms);
     return Material(
-      color: AppColors.cream,
+      color: SitePalette.of(context).cream,
       child: SingleChildScrollView(
         child: Column(
           children: [
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(0, 130, 0, 58),
-              decoration: const BoxDecoration(
+              padding: EdgeInsets.fromLTRB(0, 130, 0, 58),
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [AppColors.navy, Color(0xFF122B32)],
+                  colors: [
+                    SitePalette.of(context).navy,
+                    SitePalette.of(context).paper,
+                  ],
                 ),
               ),
               child: MaxWidth(
@@ -44,37 +48,37 @@ class LegalPage extends StatelessWidget {
                         TextButton.icon(
                           onPressed: onBack,
                           style: TextButton.styleFrom(
-                            foregroundColor: AppColors.cream,
+                            foregroundColor: SitePalette.of(context).ink,
                           ),
-                          icon: const Icon(Icons.arrow_back_rounded),
-                          label: const Text('Volver al mapa'),
+                          icon: Icon(Icons.arrow_back_rounded),
+                          label: Text('Volver al mapa'),
                         ),
-                        const SizedBox(height: 26),
-                        const SectionEyebrow('Centro legal', light: true),
-                        const SizedBox(height: 18),
+                        SizedBox(height: 26),
+                        SectionEyebrow('Centro legal', light: true),
+                        SizedBox(height: 18),
                         Text(
                           'Reglas claras para cuidar\nlas historias de todos.',
                           style: Theme.of(context).textTheme.displayLarge
                               ?.copyWith(
-                                color: AppColors.cream,
+                                color: SitePalette.of(context).ink,
                                 fontSize: MediaQuery.sizeOf(context).width < 600
                                     ? 44
                                     : 62,
                               ),
                         ),
-                        const SizedBox(height: 18),
+                        SizedBox(height: 18),
                         ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 680),
+                          constraints: BoxConstraints(maxWidth: 680),
                           child: Text(
                             'Transparencia, respeto y responsabilidad editorial para construir un mapa confiable de la memoria de La Plata.',
                             style: Theme.of(context).textTheme.bodyLarge
                                 ?.copyWith(
-                                  color: AppColors.cream.withValues(alpha: .72),
+                                  color: SitePalette.of(context).muted,
                                 ),
                           ),
                         ),
-                        const SizedBox(height: 34),
-                        const _DocumentLabel(),
+                        SizedBox(height: 34),
+                        _DocumentLabel(),
                       ],
                     );
                     final artwork = Semantics(
@@ -96,7 +100,7 @@ class LegalPage extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               copy,
-                              const SizedBox(height: 36),
+                              SizedBox(height: 36),
                               Center(child: artwork),
                             ],
                           )
@@ -104,7 +108,7 @@ class LegalPage extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Expanded(flex: 7, child: copy),
-                              const SizedBox(width: 28),
+                              SizedBox(width: 28),
                               Expanded(flex: 4, child: artwork),
                             ],
                           );
@@ -114,14 +118,14 @@ class LegalPage extends StatelessWidget {
             ),
             MaxWidth(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 58),
+                padding: EdgeInsets.symmetric(vertical: 58),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final wide = constraints.maxWidth >= 900;
-                    const metadata = _LegalMetadata();
-                    const body = _LegalDocumentBody();
+                    final metadata = _LegalMetadata();
+                    final body = _LegalDocumentBody();
                     return wide
-                        ? const Row(
+                        ? Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               SizedBox(width: 285, child: metadata),
@@ -129,14 +133,14 @@ class LegalPage extends StatelessWidget {
                               Expanded(child: body),
                             ],
                           )
-                        : const Column(
+                        : Column(
                             children: [metadata, SizedBox(height: 34), body],
                           );
                   },
                 ),
               ),
             ),
-            const _LegalFooter(),
+            _LegalFooter(),
           ],
         ),
       ),
@@ -149,11 +153,13 @@ class _DocumentLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(6),
+    padding: EdgeInsets.all(6),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: .1),
+      color: SitePalette.of(context).ink.withValues(alpha: .1),
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: Colors.white.withValues(alpha: .12)),
+      border: Border.all(
+        color: SitePalette.of(context).ink.withValues(alpha: .12),
+      ),
     ),
     child: Container(
       padding: EdgeInsets.symmetric(
@@ -170,15 +176,19 @@ class _DocumentLabel extends StatelessWidget {
           ),
         ],
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.gavel_rounded, size: 18, color: AppColors.ink),
+          Icon(
+            Icons.gavel_rounded,
+            size: 18,
+            color: SitePalette.of(context).ink,
+          ),
           SizedBox(width: 8),
           Text(
             'Términos y condiciones',
             style: TextStyle(
-              color: AppColors.ink,
+              color: SitePalette.of(context).ink,
               fontSize: 12,
               fontWeight: FontWeight.w900,
             ),
@@ -195,11 +205,11 @@ class _LegalMetadata extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
-    padding: const EdgeInsets.all(22),
+    padding: EdgeInsets.all(22),
     decoration: BoxDecoration(
-      color: AppColors.paper,
+      color: SitePalette.of(context).paper,
       borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: AppColors.line),
+      border: Border.all(color: SitePalette.of(context).line),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,18 +221,18 @@ class _LegalMetadata extends StatelessWidget {
             color: AppColors.yellow.withValues(alpha: .16),
             borderRadius: BorderRadius.circular(15),
           ),
-          child: const Icon(Icons.description_outlined),
+          child: Icon(Icons.description_outlined),
         ),
-        const SizedBox(height: 18),
+        SizedBox(height: 18),
         Text('Documento de uso', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 16),
-        const _MetadataRow(label: 'Versión', value: '1.0'),
-        const _MetadataRow(label: 'Actualización', value: '02/09/2026'),
-        const _MetadataRow(
+        SizedBox(height: 16),
+        _MetadataRow(label: 'Versión', value: '1.0'),
+        _MetadataRow(label: 'Actualización', value: '02/09/2026'),
+        _MetadataRow(
           label: 'Responsable',
           value: 'El Mapa de las Historias de La Plata',
         ),
-        const _MetadataRow(label: 'Jurisdicción', value: 'La Plata, Argentina'),
+        _MetadataRow(label: 'Jurisdicción', value: 'La Plata, Argentina'),
       ],
     ),
   );
@@ -236,21 +246,21 @@ class _MetadataRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
+    padding: EdgeInsets.only(bottom: 12),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 9,
             fontWeight: FontWeight.w900,
             letterSpacing: .8,
-            color: AppColors.muted,
+            color: SitePalette.of(context).muted,
           ),
         ),
-        const SizedBox(height: 3),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
+        SizedBox(height: 3),
+        Text(value, style: TextStyle(fontWeight: FontWeight.w700)),
       ],
     ),
   );
@@ -263,20 +273,20 @@ class _LegalDocumentBody extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionEyebrow('Condiciones del servicio'),
-      const SizedBox(height: 14),
+      SectionEyebrow('Condiciones del servicio'),
+      SizedBox(height: 14),
       Text(
         'Términos y condiciones',
         style: Theme.of(context).textTheme.displayMedium,
       ),
-      const SizedBox(height: 14),
+      SizedBox(height: 14),
       Text(
         'Al enviar una historia, relato, testimonio, recuerdo, tradición oral, memoria comunitaria, documento, fotografía, archivo, enlace, material audiovisual u otro contenido a través de esta plataforma, la persona usuaria declara haber leído y aceptado los presentes Términos y Condiciones.',
         style: Theme.of(
           context,
-        ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
+        ).textTheme.bodyLarge?.copyWith(color: SitePalette.of(context).muted),
       ),
-      const SizedBox(height: 36),
+      SizedBox(height: 36),
       for (var i = 0; i < _termsSections.length; i++)
         _LegalSection(
           number: (i + 1).toString().padLeft(2, '0'),
@@ -300,12 +310,12 @@ class _LegalSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 14),
-    padding: const EdgeInsets.all(24),
+    margin: EdgeInsets.only(bottom: 14),
+    padding: EdgeInsets.all(24),
     decoration: BoxDecoration(
-      color: AppColors.paper,
+      color: SitePalette.of(context).paper,
       borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: AppColors.line),
+      border: Border.all(color: SitePalette.of(context).line),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -318,19 +328,19 @@ class _LegalSection extends StatelessWidget {
               height: 38,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: AppColors.ink,
+                color: SitePalette.of(context).ink,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 number,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.yellow,
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
               child: Text(
                 title,
@@ -339,8 +349,11 @@ class _LegalSection extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        Text(body, style: const TextStyle(height: 1.6, color: AppColors.muted)),
+        SizedBox(height: 16),
+        Text(
+          body,
+          style: TextStyle(height: 1.6, color: SitePalette.of(context).muted),
+        ),
       ],
     ),
   );
@@ -352,8 +365,8 @@ class _LegalFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
-    color: AppColors.ink,
-    padding: const EdgeInsets.symmetric(vertical: 38),
+    color: SitePalette.of(context).canvas,
+    padding: EdgeInsets.symmetric(vertical: 38),
     child: MaxWidth(
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -366,27 +379,30 @@ class _LegalFooter extends StatelessWidget {
               Text(
                 'Consultas legales\nlegal@dardito.ar',
                 textAlign: mobile ? TextAlign.left : TextAlign.right,
-                style: const TextStyle(color: Colors.white60, height: 1.5),
+                style: TextStyle(
+                  color: SitePalette.of(context).muted,
+                  height: 1.5,
+                ),
               ),
-              const SizedBox(height: 8),
-              const _SimbiosisDigitalLink(),
+              SizedBox(height: 8),
+              _SimbiosisDigitalLink(),
             ],
           );
           return mobile
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const ProjectMark(light: true),
-                    const SizedBox(height: 24),
+                    ProjectMark(light: true),
+                    SizedBox(height: 24),
                     details,
                   ],
                 )
               : Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const ProjectMark(light: true),
-                    const SizedBox(width: 32),
-                    const Spacer(),
+                    ProjectMark(light: true),
+                    SizedBox(width: 32),
+                    Spacer(),
                     Flexible(child: details),
                   ],
                 );
@@ -407,11 +423,11 @@ class _SimbiosisDigitalLink extends StatelessWidget {
         mode: LaunchMode.externalApplication,
       );
     },
-    child: const Padding(
+    child: Padding(
       padding: EdgeInsets.symmetric(vertical: 4),
       child: Text(
         'Desarrollado por SimbiosisDigital',
-        style: TextStyle(color: Colors.white60, fontSize: 12),
+        style: TextStyle(color: SitePalette.of(context).muted, fontSize: 12),
       ),
     ),
   );

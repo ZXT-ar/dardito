@@ -185,11 +185,11 @@ void main() {
     expect(find.text('Explorá La Plata'), findsNothing);
     expect(find.text('Filtros'), findsOneWidget);
     expect(find.text('Todas las categorías'), findsNothing);
-    expect(find.byTooltip('Usar mapa claro'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Usar mapa claro'));
-    await tester.pump(const Duration(milliseconds: 250));
     expect(find.byTooltip('Usar mapa oscuro'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Usar mapa oscuro'));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byTooltip('Usar mapa claro'), findsOneWidget);
 
     await tester.tap(find.text('Filtros'));
     await tester.pump(const Duration(milliseconds: 400));

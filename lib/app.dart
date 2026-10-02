@@ -1,3 +1,4 @@
+import 'core/theme/site_palette.dart';
 import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuthException;
 import 'features/assistant/chat_session_store.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'core/analytics/usage_analytics_service.dart';
 import 'core/analytics/site_measurement.dart';
 import 'core/platform/browser_location.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_controller.dart';
 import 'core/widgets/ui.dart';
 import 'core/widgets/book_navigation.dart';
 import 'data/models/story.dart';
@@ -50,12 +52,13 @@ class _DarditoAppState extends State<DarditoApp> {
   late final FirebaseStoryLikeService _storyLikes;
   late final BrowserLocationController _browserLocation;
   late final bool _ownsAuth;
+  final _siteTheme = SiteThemeController();
   final _navigatorKey = GlobalKey<NavigatorState>();
   int _section = 0;
   CityStory? _focusedStory;
   CityStory? _assistantStory;
   LegalDocument _legalDocument = LegalDocument.terms;
-  List<CityStory> _stories = const [];
+  List<CityStory> _stories = [];
   PublicCatalogs? _catalogs;
   bool _storiesLoading = true;
   String? _storiesError;
@@ -222,7 +225,7 @@ class _DarditoAppState extends State<DarditoApp> {
       if (access.allowed) return true;
       if (access.reason == 'banned' || access.reason == 'ip_blocked') {
         ScaffoldMessenger.of(_navigatorKey.currentContext!).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
               'Esta cuenta o conexión no puede acceder en este momento.',
             ),
@@ -296,7 +299,7 @@ class _DarditoAppState extends State<DarditoApp> {
   Future<StoryLikeState> _toggleStoryLike(String storyId) async {
     final authenticated = await _ensureAuthenticated(_AuthDestination.like);
     if (!authenticated) {
-      throw const StoryLikeException('Se requiere una sesión habilitada.');
+      throw StoryLikeException('Se requiere una sesión habilitada.');
     }
     try {
       final state = await _storyLikes.toggle(storyId);
@@ -324,102 +327,113 @@ class _DarditoAppState extends State<DarditoApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: _navigatorKey,
-      title: 'El Mapa de las Historias de La Plata',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      builder: (context, child) => StoryLikesScope(
-        status: _storyLikeStatus,
-        toggle: _toggleStoryLike,
-        child: child ?? const SizedBox.shrink(),
-      ),
-      home: DarditoShell(
-        currentIndex: _section,
-        onNavigate: _goTo,
-        child: KeyedSubtree(
-          key: ValueKey('$_section-$_storiesLoading-${_storiesError != null}'),
-          child: _storiesLoading
-              ? const _StoryLoadingView()
-              : _storiesError != null
-              ? _StoryLoadingError(
-                  message: _storiesError!,
-                  onRetry: () => _loadStories(forceRefresh: true),
-                )
-              : switch (_section) {
-                  0 =>
-                    (const bool.fromEnvironment('DARDITO_REFINED_HOME')
-                        ? RefinedHomePage.new
-                        : HomePage.new)(
-                      stories: _stories,
-                      onExplore: _explore,
-                      onExploreCategory: (category) => setState(() {
-                        _focusedStory = null;
-                        _exploreCategory = category;
-                        _section = 1;
-                        measureSiteSection(_section);
-                      }),
-                      onNavigate: _goTo,
-                      onOpenLegal: _openLegal,
-                    ),
-                  1 => ExplorePage(
-                    stories: _stories,
-                    catalogNeighborhoods: _catalogs?.neighborhoods
-                        .map((entry) => entry.label)
-                        .toSet(),
-                    initiallySelected: _focusedStory,
-                    initialCategory: _exploreCategory,
-                    onAskDardito: _askDarditoAbout,
-                  ),
-                  2 => AssistantPage(
-                    key: ValueKey(
-                      'assistant-${_auth.currentUser?.id ?? 'anonymous'}-${_assistantStory?.id ?? 'general'}',
-                    ),
-                    stories: _stories,
-                    contextStory: _assistantStory,
-                    userId: _auth.currentUser?.id,
-                    onExplore: _explore,
-                    onNavigate: _goTo,
-                  ),
-                  3 => ContributePage(
-                    user: _auth.currentUser!,
-                    neighborhoods:
-                        (_catalogs?.neighborhoods
+    return SiteThemeScope(
+      controller: _siteTheme,
+      child: ListenableBuilder(
+        listenable: _siteTheme,
+        builder: (context, _) => MaterialApp(
+          darkTheme: AppTheme.dark,
+          themeMode: _siteTheme.dark ? ThemeMode.dark : ThemeMode.light,
+          navigatorKey: _navigatorKey,
+          title: 'El Mapa de las Historias de La Plata',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          builder: (context, child) => StoryLikesScope(
+            status: _storyLikeStatus,
+            toggle: _toggleStoryLike,
+            child: child ?? SizedBox.shrink(),
+          ),
+          home: DarditoShell(
+            currentIndex: _section,
+            onNavigate: _goTo,
+            child: KeyedSubtree(
+              key: ValueKey(
+                '$_section-$_storiesLoading-${_storiesError != null}',
+              ),
+              child: _storiesLoading
+                  ? _StoryLoadingView()
+                  : _storiesError != null
+                  ? _StoryLoadingError(
+                      message: _storiesError!,
+                      onRetry: () => _loadStories(forceRefresh: true),
+                    )
+                  : switch (_section) {
+                      0 =>
+                        (bool.fromEnvironment('DARDITO_REFINED_HOME')
+                            ? RefinedHomePage.new
+                            : HomePage.new)(
+                          stories: _stories,
+                          onExplore: _explore,
+                          onExploreCategory: (category) => setState(() {
+                            _focusedStory = null;
+                            _exploreCategory = category;
+                            _section = 1;
+                            measureSiteSection(_section);
+                          }),
+                          onNavigate: _goTo,
+                          onOpenLegal: _openLegal,
+                        ),
+                      1 => ExplorePage(
+                        stories: _stories,
+                        catalogNeighborhoods: _catalogs?.neighborhoods
                             .map((entry) => entry.label)
-                            .toList() ??
-                        (_stories
-                            .map((story) => story.neighborhood)
-                            .toSet()
-                            .toList()
-                          ..sort())),
-                    categories: StoryCatalog.categories,
-                    evidenceLevels: StoryCatalog.evidenceLevels,
-                    onSignOut: () async {
-                      if (_auth.currentUser != null) {
-                        ChatSessionStore().clear(_auth.currentUser!.id);
-                      }
-                      await _auth.signOut();
-                      if (mounted) {
-                        setState(() {
-                          _section = 0;
-                          measureSiteSection(_section);
-                        });
-                      }
+                            .toSet(),
+                        initiallySelected: _focusedStory,
+                        initialCategory: _exploreCategory,
+                        onAskDardito: _askDarditoAbout,
+                      ),
+                      2 => AssistantPage(
+                        key: ValueKey(
+                          'assistant-${_auth.currentUser?.id ?? 'anonymous'}-${_assistantStory?.id ?? 'general'}',
+                        ),
+                        stories: _stories,
+                        contextStory: _assistantStory,
+                        userId: _auth.currentUser?.id,
+                        onExplore: _explore,
+                        onNavigate: _goTo,
+                      ),
+                      3 => ContributePage(
+                        user: _auth.currentUser!,
+                        neighborhoods:
+                            (_catalogs?.neighborhoods
+                                .map((entry) => entry.label)
+                                .toList() ??
+                            (_stories
+                                .map((story) => story.neighborhood)
+                                .toSet()
+                                .toList()
+                              ..sort())),
+                        categories: StoryCatalog.categories,
+                        evidenceLevels: StoryCatalog.evidenceLevels,
+                        onSignOut: () async {
+                          if (_auth.currentUser != null) {
+                            ChatSessionStore().clear(_auth.currentUser!.id);
+                          }
+                          await _auth.signOut();
+                          if (mounted) {
+                            setState(() {
+                              _section = 0;
+                              measureSiteSection(_section);
+                            });
+                          }
+                        },
+                        onExplore: () => _goTo(1),
+                        onOpenLegal: _openLegal,
+                      ),
+                      4 => LegalPage(
+                        initialDocument: _legalDocument,
+                        onBack: () => _goTo(0),
+                      ),
+                      5 => MetaCompliancePage(
+                        document: MetaComplianceDocument.serviceTerms,
+                      ),
+                      _ => MetaCompliancePage(
+                        document:
+                            MetaComplianceDocument.dataDeletionInstructions,
+                      ),
                     },
-                    onExplore: () => _goTo(1),
-                    onOpenLegal: _openLegal,
-                  ),
-                  4 => LegalPage(
-                    initialDocument: _legalDocument,
-                    onBack: () => _goTo(0),
-                  ),
-                  5 => const MetaCompliancePage(
-                    document: MetaComplianceDocument.serviceTerms,
-                  ),
-                  _ => const MetaCompliancePage(
-                    document: MetaComplianceDocument.dataDeletionInstructions,
-                  ),
-                },
+            ),
+          ),
         ),
       ),
     );
@@ -427,6 +441,7 @@ class _DarditoAppState extends State<DarditoApp> {
 
   @override
   void dispose() {
+    _siteTheme.dispose();
     UsageAnalyticsService.instance.dispose();
     if (_ownsRepository) _repository.dispose();
     _catalogRepository.dispose();
@@ -444,11 +459,11 @@ class _StoryLoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-    color: AppColors.cream,
+    color: SitePalette.of(context).cream,
     child: Center(
       child: Semantics(
         label: 'Cargando historias publicadas',
-        child: const CircularProgressIndicator(color: AppColors.green),
+        child: CircularProgressIndicator(color: SitePalette.of(context).green),
       ),
     ),
   );
@@ -462,37 +477,37 @@ class _StoryLoadingError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-    color: AppColors.cream,
+    color: SitePalette.of(context).cream,
     child: Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
+        constraints: BoxConstraints(maxWidth: 460),
         child: Padding(
-          padding: const EdgeInsets.all(28),
+          padding: EdgeInsets.all(28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.cloud_off_rounded,
                 size: 44,
-                color: AppColors.green,
+                color: SitePalette.of(context).green,
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               Text(
                 'No pudimos cargar las historias publicadas',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.muted),
+                style: TextStyle(color: SitePalette.of(context).muted),
               ),
-              const SizedBox(height: 22),
+              SizedBox(height: 22),
               FilledButton.icon(
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Volver a intentar'),
+                icon: Icon(Icons.refresh_rounded),
+                label: Text('Volver a intentar'),
               ),
             ],
           ),
@@ -574,7 +589,7 @@ class _DarditoShellState extends State<DarditoShell> {
       child: AnimatedSlide(
         duration: MediaQuery.disableAnimationsOf(context)
             ? Duration.zero
-            : const Duration(milliseconds: 220),
+            : Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
         offset: _navVisible ? Offset.zero : Offset(0, bottom ? 1.5 : -1.5),
         child: nav,
@@ -593,15 +608,15 @@ class _DarditoShellState extends State<DarditoShell> {
           children: [
             Positioned.fill(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 480),
-                reverseDuration: const Duration(milliseconds: 320),
+                duration: Duration(milliseconds: 480),
+                reverseDuration: Duration(milliseconds: 320),
                 switchInCurve: Curves.easeOutCubic,
                 switchOutCurve: Curves.easeInCubic,
                 transitionBuilder: (child, animation) => FadeTransition(
                   opacity: animation,
                   child: SlideTransition(
                     position: Tween(
-                      begin: const Offset(.025, .015),
+                      begin: Offset(.025, .015),
                       end: Offset.zero,
                     ).animate(animation),
                     child: child,
@@ -639,7 +654,7 @@ class _DarditoShellState extends State<DarditoShell> {
                         horizontal: MediaQuery.sizeOf(context).width * .035,
                       ),
                       child: BookNavigation(
-                        key: const ValueKey('map-desktop-nav'),
+                        key: ValueKey('map-desktop-nav'),
                         onNavigate: onNavigate,
                       ),
                     ),
@@ -658,7 +673,7 @@ class _DarditoShellState extends State<DarditoShell> {
                           horizontal: MediaQuery.sizeOf(context).width * .035,
                         ),
                         child: BookNavigation(
-                          key: const ValueKey('spine-desktop-nav'),
+                          key: ValueKey('spine-desktop-nav'),
                           spine: true,
                           onNavigate: onNavigate,
                         ),
@@ -694,124 +709,11 @@ class _DesktopNav extends StatelessWidget {
   const _DesktopNav({required this.currentIndex, required this.onNavigate});
   final int currentIndex;
   final ValueChanged<int> onNavigate;
-
   @override
-  Widget build(BuildContext context) => Container(
-    height: 68,
-    padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
-    decoration: BoxDecoration(
-      color: AppColors.paper.withValues(alpha: .94),
-      borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: Colors.white.withValues(alpha: .85)),
-      boxShadow: [
-        BoxShadow(
-          color: AppColors.ink.withValues(alpha: .12),
-          blurRadius: 32,
-          offset: const Offset(0, 12),
-        ),
-      ],
-    ),
-    child: Row(
-      children: [
-        InkWell(
-          onTap: () => onNavigate(0),
-          borderRadius: BorderRadius.circular(14),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4),
-            child: ProjectMark(compact: true),
-          ),
-        ),
-        const Spacer(),
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: AppColors.cream,
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Row(
-            children: [
-              for (var i = 0; i < 3; i++)
-                _NavItem(
-                  index: i,
-                  selected: currentIndex == i,
-                  onTap: () => onNavigate(i),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        FilledButton.icon(
-          onPressed: () => onNavigate(3),
-          style: FilledButton.styleFrom(
-            backgroundColor: currentIndex == 3
-                ? AppColors.yellow
-                : AppColors.ink,
-            foregroundColor: currentIndex == 3
-                ? AppColors.ink
-                : AppColors.paper,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          ),
-          icon: Icon(
-            currentIndex == 3 ? Icons.edit_note_rounded : Icons.add_rounded,
-            size: 19,
-          ),
-          label: const Text('Compartí tu historia'),
-        ),
-      ],
-    ),
-  );
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.index,
-    required this.selected,
-    required this.onTap,
-  });
-  final int index;
-  final bool selected;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(right: 3),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.paper : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: AppColors.ink.withValues(alpha: .08),
-                    blurRadius: 12,
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          children: [
-            AnimatedRotation(
-              turns: selected ? .03 : 0,
-              duration: const Duration(milliseconds: 240),
-              child: Icon(DarditoShell.icons[index], size: 17),
-            ),
-            const SizedBox(width: 7),
-            Text(
-              DarditoShell.labels[index],
-              style: TextStyle(
-                fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
+  Widget build(BuildContext context) => BookNavigation(
+    spine: true,
+    currentIndex: currentIndex,
+    onNavigate: onNavigate,
   );
 }
 
@@ -822,16 +724,16 @@ class _MobileDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     height: 70,
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
+    padding: EdgeInsets.symmetric(horizontal: 7, vertical: 7),
     decoration: BoxDecoration(
-      color: AppColors.paper.withValues(alpha: .96),
+      color: SitePalette.of(context).paper.withValues(alpha: .96),
       borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: Colors.white),
+      border: Border.all(color: SitePalette.of(context).line),
       boxShadow: [
         BoxShadow(
-          color: AppColors.ink.withValues(alpha: .18),
+          color: SitePalette.of(context).ink.withValues(alpha: .18),
           blurRadius: 28,
-          offset: const Offset(0, 12),
+          offset: Offset(0, 12),
         ),
       ],
     ),
@@ -843,11 +745,13 @@ class _MobileDock extends StatelessWidget {
               onTap: () => onNavigate(i),
               borderRadius: BorderRadius.circular(17),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 260),
+                duration: Duration(milliseconds: 260),
                 curve: Curves.easeOutCubic,
                 decoration: BoxDecoration(
                   color: currentIndex == i
-                      ? (i == 3 ? AppColors.ink : AppColors.yellow)
+                      ? (i == 3
+                            ? SitePalette.of(context).ink
+                            : AppColors.yellow)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(17),
                 ),
@@ -857,12 +761,14 @@ class _MobileDock extends StatelessWidget {
                     Icon(
                       DarditoShell.icons[i],
                       size: 21,
-                      color: currentIndex == i && i == 3
-                          ? AppColors.paper
-                          : AppColors.ink,
+                      color: currentIndex == i
+                          ? (i == 3
+                                ? SitePalette.of(context).paper
+                                : AppColors.ink)
+                          : SitePalette.of(context).ink,
                     ),
                     if (currentIndex == i) ...[
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Text(
                         i == 2
                             ? 'Dardito'
@@ -870,7 +776,9 @@ class _MobileDock extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w900,
-                          color: i == 3 ? AppColors.paper : AppColors.ink,
+                          color: i == 3
+                              ? SitePalette.of(context).paper
+                              : AppColors.ink,
                         ),
                       ),
                     ],
@@ -924,7 +832,7 @@ class _OAuthDialogState extends State<_OAuthDialog> {
       // Una espera previa hace que Safari y las PWA bloqueen Google OAuth.
       final signIn = widget.signIn(
         provider,
-        consent: const AuthConsent(accepted: true),
+        consent: AuthConsent(accepted: true),
       );
       await signIn;
       if (mounted) Navigator.pop(context, true);
@@ -960,13 +868,13 @@ class _OAuthDialogState extends State<_OAuthDialog> {
 
   @override
   Widget build(BuildContext context) => Dialog(
-    backgroundColor: AppColors.paper,
-    insetPadding: const EdgeInsets.all(20),
+    backgroundColor: SitePalette.of(context).paper,
+    insetPadding: EdgeInsets.all(20),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 480),
+      constraints: BoxConstraints(maxWidth: 480),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(30),
+        padding: EdgeInsets.all(30),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -974,7 +882,7 @@ class _OAuthDialogState extends State<_OAuthDialog> {
               alignment: Alignment.centerRight,
               child: IconButton(
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded),
+                icon: Icon(Icons.close_rounded),
               ),
             ),
             Container(
@@ -984,9 +892,9 @@ class _OAuthDialogState extends State<_OAuthDialog> {
                 color: AppColors.yellow,
                 borderRadius: BorderRadius.circular(22),
               ),
-              child: const Icon(Icons.edit_note_rounded, size: 34),
+              child: Icon(Icons.edit_note_rounded, size: 34),
             ),
-            const SizedBox(height: 22),
+            SizedBox(height: 22),
             Text(
               switch (widget.destination) {
                 _AuthDestination.assistant =>
@@ -999,7 +907,7 @@ class _OAuthDialogState extends State<_OAuthDialog> {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineLarge,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(
               switch (widget.destination) {
                 _AuthDestination.assistant =>
@@ -1010,9 +918,12 @@ class _OAuthDialogState extends State<_OAuthDialog> {
                   'Tu cuenta permite registrar un único Me gusta por historia y recordarlo cuando vuelvas.',
               },
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.muted, height: 1.5),
+              style: TextStyle(
+                color: SitePalette.of(context).muted,
+                height: 1.5,
+              ),
             ),
-            const SizedBox(height: 26),
+            SizedBox(height: 26),
             CheckboxListTile(
               value: _accepted,
               onChanged: _loading == null
@@ -1024,7 +935,7 @@ class _OAuthDialogState extends State<_OAuthDialog> {
                 onTap: () => widget.onOpenLegal(LegalDocument.terms),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _OAuthButton(
               label: 'Continuar con Gmail',
               icon: Icons.g_mobiledata_rounded,
@@ -1033,19 +944,19 @@ class _OAuthDialogState extends State<_OAuthDialog> {
               onTap: () => _choose(AuthProvider.google),
             ),
             if (_error != null) ...[
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFECE8),
-                  border: Border.all(color: const Color(0xFFB53D2E)),
+                  color: Color(0xFFFFECE8),
+                  border: Border.all(color: Color(0xFFB53D2E)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   _error!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Color(0xFF8E2F23),
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -1054,13 +965,13 @@ class _OAuthDialogState extends State<_OAuthDialog> {
                 ),
               ),
             ],
-            const SizedBox(height: 18),
-            const Text(
+            SizedBox(height: 18),
+            Text(
               'Se abrirá Google para que elijas o ingreses tu cuenta.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 10,
-                color: AppColors.muted,
+                color: SitePalette.of(context).muted,
                 fontWeight: FontWeight.w800,
                 letterSpacing: .5,
               ),
@@ -1079,16 +990,20 @@ class _TermsConsentLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const style = TextStyle(fontSize: 12, height: 1.4);
+    final style = TextStyle(fontSize: 12, height: 1.4);
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        const Text('Declaro que he leído y acepto los ', style: style),
+        Text('Declaro que he leído y acepto los ', style: style),
         InkWell(
           onTap: onTap,
-          child: const Text(
+          child: Text(
             'Términos y Condiciones.',
-            style: TextStyle(color: AppColors.rust, fontSize: 12, height: 1.4),
+            style: TextStyle(
+              color: SitePalette.of(context).rust,
+              fontSize: 12,
+              height: 1.4,
+            ),
           ),
         ),
       ],
@@ -1116,12 +1031,12 @@ class _OAuthButton extends StatelessWidget {
       onPressed: enabled ? onTap : null,
       style: FilledButton.styleFrom(
         backgroundColor: Colors.white,
-        foregroundColor: AppColors.ink,
-        side: const BorderSide(color: AppColors.line),
-        padding: const EdgeInsets.symmetric(vertical: 17),
+        foregroundColor: SitePalette.of(context).ink,
+        side: BorderSide(color: SitePalette.of(context).line),
+        padding: EdgeInsets.symmetric(vertical: 17),
       ),
       icon: loading
-          ? const SizedBox(
+          ? SizedBox(
               width: 20,
               height: 20,
               child: CircularProgressIndicator(strokeWidth: 2),

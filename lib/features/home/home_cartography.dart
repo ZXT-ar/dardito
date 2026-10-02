@@ -1,13 +1,13 @@
+import '../../core/theme/site_palette.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/story.dart';
 import 'home_explore_invitation.dart';
 
-const tiloInk = Color(0xFF566C32);
+const tiloInk = Color(0xFF536044);
 
 /// One projection for streets, park boundaries and story coordinates.
 /// The source capture uses MapLibre's 512px Mercator world, bearing 42.1°.
@@ -20,9 +20,9 @@ class HomeMapProjection {
     size.width * (size.width < 1050 ? .52 : .72),
     sectionTop + sectionHeight * (size.width < 1050 ? .70 : .43),
   );
-  Offset source(Offset p) => anchor + (p - const Offset(1920, 1080)) * scale;
+  Offset source(Offset p) => anchor + (p - Offset(1920, 1080)) * scale;
   static Offset project(double latitude, double longitude) {
-    const world = 512 * 11585.237502960395; // 2^13.5
+    final world = 512 * 11585.237502960395; // 2^13.5
     double mercator(double lat) {
       final s = math.sin(lat * math.pi / 180);
       return .5 - math.log((1 + s) / (1 - s)) / (4 * math.pi);
@@ -185,8 +185,9 @@ class _HomeCartographyState extends State<HomeCartography> {
                             Positioned.fill(
                               child: RepaintBoundary(
                                 child: CustomPaint(
-                                  key: const ValueKey('continuous-home-map'),
+                                  key: ValueKey('continuous-home-map'),
                                   painter: _CartographyPainter(
+                                    SitePalette.of(context).dark,
                                     _geometry,
                                     projection,
                                     reveal,
@@ -203,21 +204,21 @@ class _HomeCartographyState extends State<HomeCartography> {
                                     gradient: LinearGradient(
                                       begin: Alignment.topCenter,
                                       end: Alignment.bottomCenter,
-                                      stops: const [0, .38, .66, .88, 1],
+                                      stops: [0, .38, .66, .88, 1],
                                       colors: [
-                                        AppColors.heroPaper.withValues(
-                                          alpha: .64,
-                                        ),
-                                        AppColors.heroPaper.withValues(
-                                          alpha: .42,
-                                        ),
-                                        AppColors.heroPaper.withValues(
-                                          alpha: .02,
-                                        ),
-                                        AppColors.heroPaper.withValues(
-                                          alpha: .05,
-                                        ),
-                                        AppColors.heroPaper,
+                                        SitePalette.of(
+                                          context,
+                                        ).canvas.withValues(alpha: .64),
+                                        SitePalette.of(
+                                          context,
+                                        ).canvas.withValues(alpha: .42),
+                                        SitePalette.of(
+                                          context,
+                                        ).canvas.withValues(alpha: .02),
+                                        SitePalette.of(
+                                          context,
+                                        ).canvas.withValues(alpha: .05),
+                                        SitePalette.of(context).canvas,
                                       ],
                                     ),
                                   ),
@@ -231,20 +232,20 @@ class _HomeCartographyState extends State<HomeCartography> {
                                     gradient: LinearGradient(
                                       begin: Alignment.centerLeft,
                                       end: Alignment.centerRight,
-                                      stops: const [0, .36, .62, 1],
+                                      stops: [0, .36, .62, 1],
                                       colors: [
-                                        AppColors.heroPaper.withValues(
-                                          alpha: .82,
-                                        ),
-                                        AppColors.heroPaper.withValues(
-                                          alpha: .70,
-                                        ),
-                                        AppColors.heroPaper.withValues(
-                                          alpha: 0,
-                                        ),
-                                        AppColors.heroPaper.withValues(
-                                          alpha: 0,
-                                        ),
+                                        SitePalette.of(
+                                          context,
+                                        ).canvas.withValues(alpha: .82),
+                                        SitePalette.of(
+                                          context,
+                                        ).canvas.withValues(alpha: .70),
+                                        SitePalette.of(
+                                          context,
+                                        ).canvas.withValues(alpha: 0),
+                                        SitePalette.of(
+                                          context,
+                                        ).canvas.withValues(alpha: 0),
                                       ],
                                     ),
                                   ),
@@ -263,20 +264,20 @@ class _HomeCartographyState extends State<HomeCartography> {
                                       gradient: LinearGradient(
                                         begin: Alignment.topCenter,
                                         end: Alignment.bottomCenter,
-                                        stops: const [0, .15, .85, 1],
+                                        stops: [0, .15, .85, 1],
                                         colors: [
-                                          AppColors.heroPaper.withValues(
-                                            alpha: 0,
-                                          ),
-                                          AppColors.heroPaper.withValues(
-                                            alpha: .94,
-                                          ),
-                                          AppColors.heroPaper.withValues(
-                                            alpha: .94,
-                                          ),
-                                          AppColors.heroPaper.withValues(
-                                            alpha: 0,
-                                          ),
+                                          SitePalette.of(
+                                            context,
+                                          ).canvas.withValues(alpha: 0),
+                                          SitePalette.of(
+                                            context,
+                                          ).canvas.withValues(alpha: .94),
+                                          SitePalette.of(
+                                            context,
+                                          ).canvas.withValues(alpha: .94),
+                                          SitePalette.of(
+                                            context,
+                                          ).canvas.withValues(alpha: 0),
                                         ],
                                       ),
                                     ),
@@ -317,7 +318,10 @@ class _HomeCartographyState extends State<HomeCartography> {
                     child: IgnorePointer(
                       child: ExcludeSemantics(
                         child: CustomPaint(
-                          painter: CompassPainter(angle: angle),
+                          painter: CompassPainter(
+                            angle: angle,
+                            dark: SitePalette.of(context).dark,
+                          ),
                         ),
                       ),
                     ),
@@ -342,10 +346,10 @@ class _HomeCartographyState extends State<HomeCartography> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const SectionEyebrow('El mapa vivo'),
-                                  const SizedBox(height: 18),
+                                  SectionEyebrow('El mapa vivo'),
+                                  SizedBox(height: 18),
                                   AnimatedDefaultTextStyle(
-                                    duration: const Duration(milliseconds: 350),
+                                    duration: Duration(milliseconds: 350),
                                     style: Theme.of(context)
                                         .textTheme
                                         .displayMedium!
@@ -353,33 +357,35 @@ class _HomeCartographyState extends State<HomeCartography> {
                                           fontSize: narrow ? 35 : 46,
                                           height: 1.08,
                                           color: active
-                                              ? tiloInk
-                                              : AppColors.ink,
+                                              ? SitePalette.of(context).green
+                                              : SitePalette.of(context).ink,
                                         ),
-                                    child: const Text(
+                                    child: Text(
                                       'Cada punto guarda\nalgo para contar.',
                                       key: ValueKey('cartography-heading'),
                                     ),
                                   ),
-                                  const SizedBox(height: 20),
+                                  SizedBox(height: 20),
                                   Text(
                                     'Recorré La Plata por barrio, época o curiosidad. Historias documentadas y memorias de quienes la habitan.',
                                     style: Theme.of(context).textTheme.bodyLarge
                                         ?.copyWith(
-                                          color: const Color(0xFF655E4D),
+                                          color: SitePalette.of(context).muted,
                                           height: 1.55,
                                         ),
                                   ),
-                                  const SizedBox(height: 20),
+                                  SizedBox(height: 20),
                                   TextButton(
                                     onPressed: () => widget.onExplore(null),
                                     style: TextButton.styleFrom(
-                                      foregroundColor: tiloInk,
-                                      padding: const EdgeInsets.symmetric(
+                                      foregroundColor: SitePalette.of(
+                                        context,
+                                      ).green,
+                                      padding: EdgeInsets.symmetric(
                                         vertical: 10,
                                       ),
                                     ),
-                                    child: const Row(
+                                    child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Flexible(
@@ -391,7 +397,9 @@ class _HomeCartographyState extends State<HomeCartography> {
                                               fontSize: 22,
                                               decoration:
                                                   TextDecoration.underline,
-                                              decorationColor: tiloInk,
+                                              decorationColor: SitePalette.of(
+                                                context,
+                                              ).green,
                                             ),
                                           ),
                                         ),
@@ -408,12 +416,15 @@ class _HomeCartographyState extends State<HomeCartography> {
                       ),
                     ],
                   ),
-                  const Positioned(
+                  Positioned(
                     right: 16,
                     bottom: 10,
                     child: Text(
                       '© OpenStreetMap contributors',
-                      style: TextStyle(fontSize: 10, color: Color(0xFF756B55)),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: SitePalette.of(context).muted,
+                      ),
                     ),
                   ),
                 ],
@@ -423,7 +434,7 @@ class _HomeCartographyState extends State<HomeCartography> {
         }
 
         return ColoredBox(
-          color: AppColors.heroPaper,
+          color: SitePalette.of(context).canvas,
           child: scroll == null
               ? scene()
               : AnimatedBuilder(animation: scroll, builder: (_, _) => scene()),
@@ -458,7 +469,7 @@ class _StoryMapPinState extends State<_StoryMapPin> {
         onEnter: (_) => setState(() => _hover = true),
         onExit: (_) => setState(() => _hover = false),
         child: Material(
-          color: AppColors.heroPaper.withValues(alpha: 0),
+          color: SitePalette.of(context).canvas.withValues(alpha: 0),
           child: InkWell(
             onTap: widget.onTap,
             onFocusChange: (value) => setState(() => _hover = value),
@@ -467,14 +478,19 @@ class _StoryMapPinState extends State<_StoryMapPin> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
+                  duration: Duration(milliseconds: 180),
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: _hover ? tiloInk : AppColors.heroPaper,
+                    color: _hover
+                        ? SitePalette.of(context).green
+                        : SitePalette.of(context).canvas,
                     shape: BoxShape.circle,
-                    border: Border.all(color: tiloInk, width: 2),
-                    boxShadow: const [
+                    border: Border.all(
+                      color: SitePalette.of(context).green,
+                      width: 2,
+                    ),
+                    boxShadow: [
                       BoxShadow(color: Color(0x20566C32), blurRadius: 12),
                     ],
                   ),
@@ -485,27 +501,26 @@ class _StoryMapPinState extends State<_StoryMapPin> {
                       fontFamily: 'Lora',
                       fontSize: 19,
                       fontWeight: FontWeight.w700,
-                      color: _hover ? AppColors.heroPaper : tiloInk,
+                      color: _hover
+                          ? SitePalette.of(context).canvas
+                          : SitePalette.of(context).green,
                     ),
                   ),
                 ),
-                const SizedBox(height: 5),
+                SizedBox(height: 5),
                 Container(
                   width: 128,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 3,
-                  ),
-                  color: AppColors.heroPaper.withValues(alpha: .90),
+                  padding: EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                  color: SitePalette.of(context).canvas.withValues(alpha: .90),
                   child: Text(
                     widget.story.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Lora',
                       fontSize: 12,
                       height: 1.2,
-                      color: tiloInk,
+                      color: SitePalette.of(context).green,
                     ),
                   ),
                 ),
@@ -552,7 +567,14 @@ class _MapGeometry {
 }
 
 class _CartographyPainter extends CustomPainter {
-  _CartographyPainter(this.geometry, this.projection, this.reveal, this.points);
+  _CartographyPainter(
+    this.dark,
+    this.geometry,
+    this.projection,
+    this.reveal,
+    this.points,
+  );
+  final bool dark;
   final _MapGeometry? geometry;
   final HomeMapProjection projection;
   final double reveal;
@@ -569,22 +591,22 @@ class _CartographyPainter extends CustomPainter {
       g.parks,
       Paint()
         ..color = Color.lerp(
-          const Color(0xFFE8DFC4),
-          const Color(0xFFADC276),
+          (dark ? Color(0xFF243B36) : Color(0xFFE8DFC4)),
+          (dark ? Color(0xFF647C4A) : Color(0xFFADC276)),
           reveal,
         )!,
     );
     canvas.drawPath(
       g.roads,
       Paint()
-        ..color = const Color(0xFFDED3B5)
+        ..color = (dark ? Color(0xFF33464D) : Color(0xFFDED3B5))
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.4,
     );
     canvas.drawPath(
       g.avenues,
       Paint()
-        ..color = const Color(0xFFC8B992)
+        ..color = (dark ? Color(0xFF576456) : Color(0xFFC8B992))
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4,
     );
@@ -606,7 +628,9 @@ class _CartographyPainter extends CustomPainter {
       canvas.drawPath(
         metric.extractPath(0, metric.length * reveal),
         Paint()
-          ..color = tiloInk.withValues(alpha: .70 * reveal)
+          ..color = (dark ? Color(0xFFB9C795) : tiloInk).withValues(
+            alpha: .70 * reveal,
+          )
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2
           ..strokeCap = StrokeCap.round,
@@ -616,6 +640,7 @@ class _CartographyPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CartographyPainter old) =>
+      old.dark != dark ||
       old.geometry != geometry ||
       old.reveal != reveal ||
       old.projection.size != projection.size ||

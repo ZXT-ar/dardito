@@ -1,8 +1,8 @@
+import '../theme/site_palette.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../theme/app_theme.dart';
 import 'dardito_details.dart';
 
 class SectionEyebrow extends StatelessWidget {
@@ -14,8 +14,8 @@ class SectionEyebrow extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      const DarditoDetail(size: 23),
-      const SizedBox(width: 10),
+      DarditoDetail(size: 23),
+      SizedBox(width: 10),
       Flexible(
         child: Text(
           text.toUpperCase(),
@@ -25,7 +25,9 @@ class SectionEyebrow extends StatelessWidget {
             fontSize: 12,
             letterSpacing: 1.4,
             fontWeight: FontWeight.w900,
-            color: light ? AppColors.cream : AppColors.ink,
+            color: light
+                ? SitePalette.of(context).cream
+                : SitePalette.of(context).ink,
           ),
         ),
       ),
@@ -46,7 +48,7 @@ class TrustBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
     decoration: BoxDecoration(
       color: color.withValues(alpha: .1),
       borderRadius: BorderRadius.circular(20),
@@ -55,7 +57,7 @@ class TrustBadge extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 14, color: color),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         Flexible(
           child: Text(
             label,
@@ -89,15 +91,62 @@ class ProjectMark extends StatelessWidget {
           horizontal: compact ? 5 : 8,
           vertical: compact ? 3 : 5,
         ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(compact ? 11 : 15),
-        ),
-        child: Image.asset(
-          'assets/brand/mhdlp_logo_horizontal.jpg',
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.high,
-          excludeFromSemantics: true,
+        child: ColorFiltered(
+          colorFilter: SitePalette.of(context).dark
+              ? ColorFilter.mode(SitePalette.of(context).ink, BlendMode.srcIn)
+              : const ColorFilter.matrix([
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                ]),
+          child: ColorFiltered(
+            // Remove the white JPEG ground at render time, preserving the asset.
+            colorFilter: const ColorFilter.matrix([
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              -.2126,
+              -.7152,
+              -.0722,
+              0,
+              255,
+            ]),
+            child: Image.asset(
+              'assets/brand/mhdlp_logo_horizontal.jpg',
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+              excludeFromSemantics: true,
+            ),
+          ),
         ),
       ),
     );
@@ -116,7 +165,7 @@ class MaxWidth extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 1240),
+      constraints: BoxConstraints(maxWidth: 1240),
       child: Padding(padding: padding, child: child),
     ),
   );
@@ -144,17 +193,17 @@ class SectionTitle extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SectionEyebrow(eyebrow),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(title, style: Theme.of(context).textTheme.displayMedium),
             if (description != null) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 650),
+                constraints: BoxConstraints(maxWidth: 650),
                 child: Text(
                   description!,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: SitePalette.of(context).muted,
+                  ),
                 ),
               ),
             ],
@@ -195,28 +244,30 @@ class _HoverLiftState extends State<HoverLift> {
       onExit: (_) => setState(() => _hovered = false),
       child: AnimatedScale(
         scale: (_hovered || _focused) ? widget.scale : 1,
-        duration: const Duration(milliseconds: 220),
+        duration: Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
         child: AnimatedSlide(
           offset: Offset(
             0,
             (_hovered || _focused) ? -widget.distance / 100 : 0,
           ),
-          duration: const Duration(milliseconds: 220),
+          duration: Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
+            duration: Duration(milliseconds: 220),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
               boxShadow: (_hovered || _focused)
                   ? [
                       BoxShadow(
-                        color: AppColors.ink.withValues(alpha: .13),
+                        color: SitePalette.of(
+                          context,
+                        ).ink.withValues(alpha: .13),
                         blurRadius: 28,
-                        offset: const Offset(0, 14),
+                        offset: Offset(0, 14),
                       ),
                     ]
-                  : const [],
+                  : [],
             ),
             child: Stack(
               children: [
@@ -228,8 +279,8 @@ class _HoverLiftState extends State<HoverLift> {
                     opacity: (_hovered || _focused) ? 1 : 0,
                     duration: MediaQuery.disableAnimationsOf(context)
                         ? Duration.zero
-                        : const Duration(milliseconds: 180),
-                    child: const DarditoDetail(ribbon: true, size: 12),
+                        : Duration(milliseconds: 180),
+                    child: DarditoDetail(ribbon: true, size: 12),
                   ),
                 ),
               ],
@@ -346,15 +397,15 @@ class _ScrollEntranceState extends State<ScrollEntrance> {
     if (MediaQuery.disableAnimationsOf(context)) return widget.child;
     return AnimatedOpacity(
       opacity: _visible ? 1 : 0,
-      duration: const Duration(milliseconds: 520),
+      duration: Duration(milliseconds: 520),
       curve: Curves.easeOutCubic,
       child: AnimatedSlide(
         offset: _visible ? Offset.zero : Offset(0, widget.distance),
-        duration: const Duration(milliseconds: 520),
+        duration: Duration(milliseconds: 520),
         curve: Curves.easeOutCubic,
         child: AnimatedScale(
           scale: _visible ? 1 : widget.startScale,
-          duration: const Duration(milliseconds: 520),
+          duration: Duration(milliseconds: 520),
           curve: Curves.easeOutCubic,
           child: widget.child,
         ),

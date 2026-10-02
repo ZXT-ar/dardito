@@ -1,3 +1,4 @@
+import '../../core/theme/site_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -20,16 +21,16 @@ Future<void> showStoryShareOptions(
     constraints: BoxConstraints(
       maxHeight: MediaQuery.sizeOf(context).height * .9,
     ),
-    backgroundColor: AppColors.paper,
-    shape: const RoundedRectangleBorder(
+    backgroundColor: SitePalette.of(context).paper,
+    shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
     ),
     builder: (sheetContext) => SafeArea(
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
+          padding: EdgeInsets.fromLTRB(22, 18, 22, 28),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
+            constraints: BoxConstraints(maxWidth: 560),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,24 +40,24 @@ Future<void> showStoryShareOptions(
                     width: 42,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: AppColors.line,
+                      color: SitePalette.of(context).line,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 ),
-                const SizedBox(height: 22),
+                SizedBox(height: 22),
                 Text(
                   'Compartir historia',
                   style: Theme.of(sheetContext).textTheme.headlineMedium,
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   story.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: AppColors.muted),
+                  style: TextStyle(color: SitePalette.of(context).muted),
                 ),
-                const SizedBox(height: 22),
+                SizedBox(height: 22),
                 _ShareOption(
                   icon: Icons.chat_bubble_outline_rounded,
                   title: 'WhatsApp',
@@ -70,9 +71,7 @@ Future<void> showStoryShareOptions(
                     );
                     if (!opened && context.mounted) {
                       await Clipboard.setData(
-                        const ClipboardData(
-                          text: WhatsAppConfig.displayPhoneNumber,
-                        ),
+                        ClipboardData(text: WhatsAppConfig.displayPhoneNumber),
                       );
                       if (context.mounted) {
                         _notify(
@@ -83,7 +82,7 @@ Future<void> showStoryShareOptions(
                     }
                   },
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 _ShareOption(
                   icon: Icons.camera_alt_outlined,
                   title: 'Instagram',
@@ -112,7 +111,7 @@ Future<void> showStoryShareOptions(
                     }
                   },
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 _ShareOption(
                   icon: Icons.link_rounded,
                   title: 'Copiar enlace',
@@ -162,13 +161,13 @@ class _ShareOption extends StatelessWidget {
     color: Colors.white,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(16),
-      side: const BorderSide(color: AppColors.line),
+      side: BorderSide(color: SitePalette.of(context).line),
     ),
     clipBehavior: Clip.antiAlias,
     child: InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
             Container(
@@ -178,29 +177,26 @@ class _ShareOption extends StatelessWidget {
                 color: AppColors.yellow.withValues(alpha: .18),
                 borderRadius: BorderRadius.circular(13),
               ),
-              child: Icon(icon, color: AppColors.ink),
+              child: Icon(icon, color: SitePalette.of(context).ink),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 2),
+                  Text(title, style: TextStyle(fontWeight: FontWeight.w900)),
+                  SizedBox(height: 2),
                   Text(
                     detail,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.muted,
+                      color: SitePalette.of(context).muted,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_outward_rounded, size: 20),
+            Icon(Icons.arrow_outward_rounded, size: 20),
           ],
         ),
       ),

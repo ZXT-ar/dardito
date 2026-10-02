@@ -55,7 +55,7 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
   final List<StreamSubscription<dynamic>> _markerListeners = [];
   StreamSubscription<void>? _zoomListener;
 
-  String get _backgroundColor => widget.lightTheme ? '#F4EFE4' : '#102937';
+  String get _backgroundColor => widget.lightTheme ? '#F7EFDA' : '#101C23';
 
   @override
   void initState() {
@@ -117,6 +117,7 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
       _map!.options = gmaps.MapOptions()
         ..backgroundColor = _backgroundColor
         ..styles = _decodeStyles(widget.style);
+      _replaceMarkers();
     }
     if (oldWidget.interactive != widget.interactive) {
       _applyInteractivity();
@@ -216,9 +217,13 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
     final svg =
         '<svg xmlns="http://www.w3.org/2000/svg" width="68" height="68" viewBox="0 0 68 68">'
         '<circle cx="34" cy="34" r="32" fill="#102937" fill-opacity=".25"/>'
-        '<circle cx="34" cy="32" r="27" fill="${selected ? '#F4C542' : '#F4EFE4'}" stroke="#09527A" stroke-width="5"/>'
+        '<circle cx="34" cy="32" r="27" fill="${selected
+            ? '#F4C542'
+            : widget.lightTheme
+            ? '#F7EFDA'
+            : '#29373C'}" stroke="${widget.lightTheme ? '#647447' : '#B9C795'}" stroke-width="5"/>'
         '<circle cx="55" cy="12" r="6" fill="#F4C542"/>'
-        '<text x="34" y="39" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#102937">$count</text></svg>';
+        '<text x="34" y="39" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="${widget.lightTheme ? '#171815' : '#F0E6D2'}">$count</text></svg>';
     return gmaps.Icon(
       url: 'data:image/svg+xml;charset=UTF-8,${Uri.encodeComponent(svg)}',
       scaledSize: gmaps.Size(68, 68),

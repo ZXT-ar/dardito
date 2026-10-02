@@ -1,3 +1,4 @@
+import '../../core/theme/site_palette.dart';
 // Propuesta conservadora de la portada existente. Activar con DARDITO_REFINED_HOME.
 import 'dart:ui' show ImageFilter;
 
@@ -41,31 +42,31 @@ class RefinedHomePage extends StatelessWidget {
           onExplore: () => onExplore(null),
           onAsk: () => onNavigate(2),
         ),
-        const SizedBox(height: 72),
+        SizedBox(height: 72),
         MaxWidth(
           child: _MapCallout(
             stories: stories,
             onExplore: () => onExplore(null),
           ),
         ),
-        const SizedBox(height: 80),
+        SizedBox(height: 80),
         HomeEntrance(
           child: MaxWidth(child: _Categories(onExplore: onExploreCategory)),
         ),
-        const SizedBox(height: 80),
+        SizedBox(height: 80),
         MaxWidth(
           child: _Featured(
             stories: stories.where((s) => s.featured).toList(),
             onExplore: onExplore,
           ),
         ),
-        const SizedBox(height: 80),
+        SizedBox(height: 80),
         HomeEntrance(
           child: MaxWidth(
             child: _TrustSection(onContribute: () => onNavigate(3)),
           ),
         ),
-        const SizedBox(height: 80),
+        SizedBox(height: 80),
         _WhatsAppCallout(onAsk: () => _openWhatsAppConversation(context)),
         _Footer(onOpenLegal: onOpenLegal),
       ],
@@ -79,13 +80,13 @@ Future<void> _openWhatsAppConversation(BuildContext context) async {
   );
   if (opened || !context.mounted) return;
   await Clipboard.setData(
-    const ClipboardData(text: WhatsAppConfig.displayPhoneNumber),
+    ClipboardData(text: WhatsAppConfig.displayPhoneNumber),
   );
   if (!context.mounted) return;
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(
           'No pudimos abrir WhatsApp. Copiamos el número +54 9 221 319-7058.',
         ),
@@ -119,43 +120,45 @@ class RefinedHomeHero extends StatelessWidget {
                         'El Mapa de las\nHistorias de La Plata.',
                         style: Theme.of(context).textTheme.displayLarge
                             ?.copyWith(
-                              color: AppColors.ink,
+                              color: SitePalette.of(context).ink,
                               fontSize: narrow
                                   ? (c.maxWidth * .115).clamp(34.0, 48.0)
                                   : (c.maxWidth * .052).clamp(48.0, 64.0),
                             ),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                       Text(
                         'Dardito te ayuda a descubrirlas.',
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
-                              color: const Color(0xFF876015),
+                              color: (SitePalette.of(context).dark
+                                  ? SitePalette.of(context).rust
+                                  : Color(0xFF876015)),
                               fontWeight: FontWeight.w600,
                             ),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                       ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 520),
+                        constraints: BoxConstraints(maxWidth: 520),
                         child: Text(
                           'Explorá las historias, personas, lugares y misterios que hicieron, hacen y siguen haciendo única a La Plata.',
                           style: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(color: const Color(0xFF595343)),
+                              ?.copyWith(color: SitePalette.of(context).muted),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Text(
                         'La ciudad nunca deja de contarse.',
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
-                              color: const Color(0xFF6B614D),
+                              color: SitePalette.of(context).muted,
                               fontStyle: FontStyle.italic,
                             ),
                       ),
                       if (narrow) ...[
-                        const SizedBox(height: 26),
+                        SizedBox(height: 26),
                         ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 420),
+                          constraints: BoxConstraints(maxWidth: 420),
                           child: HomeExploreInvitation(
                             compact: true,
                             showCompass: withBackdrop,
@@ -227,15 +230,15 @@ class RefinedHomeHero extends StatelessWidget {
           );
           if (narrow) {
             return Padding(
-              padding: const EdgeInsets.only(top: 36, bottom: 36),
+              padding: EdgeInsets.only(top: 36, bottom: 36),
               child: Column(
                 children: [
                   copy,
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   HomeEntrance(
-                    delay: const Duration(milliseconds: 160),
+                    delay: Duration(milliseconds: 160),
                     child: Transform.translate(
-                      offset: const Offset(24, 0),
+                      offset: Offset(24, 0),
                       child: visual,
                     ),
                   ),
@@ -247,18 +250,18 @@ class RefinedHomeHero extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               Padding(
-                padding: const EdgeInsets.only(top: 106, bottom: 130),
+                padding: EdgeInsets.only(top: 106, bottom: 130),
                 child: Row(
                   children: [
                     Expanded(
                       flex: 11,
                       child: Transform.translate(
-                        offset: const Offset(72, -110),
+                        offset: Offset(72, -110),
                         child: copy,
                       ),
                     ),
-                    const SizedBox(width: 32),
-                    const Expanded(flex: 8, child: SizedBox(height: 560)),
+                    SizedBox(width: 32),
+                    Expanded(flex: 8, child: SizedBox(height: 560)),
                   ],
                 ),
               ),
@@ -268,7 +271,7 @@ class RefinedHomeHero extends StatelessWidget {
                 width: (c.maxWidth * .46).clamp(450.0, 550.0),
                 height: 700,
                 child: HomeEntrance(
-                  delay: const Duration(milliseconds: 160),
+                  delay: Duration(milliseconds: 160),
                   child: LayoutBuilder(
                     builder: (context, frame) => Stack(
                       clipBehavior: Clip.none,
@@ -320,7 +323,7 @@ class RefinedHomeHero extends StatelessWidget {
     );
     final fadingContent = ShaderMask(
       blendMode: BlendMode.dstIn,
-      shaderCallback: (bounds) => const LinearGradient(
+      shaderCallback: (bounds) => LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [Colors.white, Colors.white, Colors.transparent],
@@ -356,7 +359,7 @@ class _DarditoSpeechBubble extends StatelessWidget {
             child: DecoratedBox(
               decoration: ShapeDecoration(
                 color: AppColors.yellow,
-                shape: const _SpeechBubbleShape(),
+                shape: _SpeechBubbleShape(),
               ),
             ),
           ),
@@ -366,8 +369,8 @@ class _DarditoSpeechBubble extends StatelessWidget {
             right: 6,
             bottom: 7,
             child: Material(
-              color: AppColors.cream,
-              shape: const _SpeechBubbleShape(),
+              color: SitePalette.of(context).cream,
+              shape: _SpeechBubbleShape(),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: onPressed,
@@ -376,7 +379,7 @@ class _DarditoSpeechBubble extends StatelessWidget {
                 focusColor: AppColors.yellow.withValues(alpha: .35),
                 child: ExcludeSemantics(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(26, 22, 23, 44),
+                    padding: EdgeInsets.fromLTRB(26, 22, 23, 44),
                     child: Row(
                       children: [
                         Expanded(
@@ -391,7 +394,7 @@ class _DarditoSpeechBubble extends StatelessWidget {
                                 Text(
                                   'Preguntale a',
                                   style: TextStyle(
-                                    color: AppColors.ink,
+                                    color: SitePalette.of(context).ink,
                                     fontSize: 21,
                                     fontWeight: FontWeight.w600,
                                     height: 1.2,
@@ -400,7 +403,7 @@ class _DarditoSpeechBubble extends StatelessWidget {
                                 DarditoAnimatedName(
                                   style: TextStyle(
                                     fontFamily: 'Lora',
-                                    color: AppColors.ink,
+                                    color: SitePalette.of(context).ink,
                                     fontSize: 37,
                                     fontWeight: FontWeight.w800,
                                     fontStyle: FontStyle.italic,
@@ -414,11 +417,11 @@ class _DarditoSpeechBubble extends StatelessWidget {
                         Container(
                           width: 34,
                           height: 34,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             color: AppColors.yellow,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.north_east_rounded,
                             size: 21,
                             color: AppColors.ink,
@@ -440,7 +443,7 @@ class _DarditoSpeechBubble extends StatelessWidget {
 class _SpeechBubbleShape extends ShapeBorder {
   const _SpeechBubbleShape();
   @override
-  EdgeInsetsGeometry get dimensions => const EdgeInsets.all(2);
+  EdgeInsetsGeometry get dimensions => EdgeInsets.all(2);
   @override
   ShapeBorder scale(double t) => this;
   @override
@@ -497,12 +500,12 @@ class _Categories extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionTitle(
+      SectionTitle(
         eyebrow: 'Elegí tu curiosidad',
         title: '¿Qué querés descubrir hoy?',
         description: 'Cada historia abre una puerta distinta a la ciudad.',
       ),
-      const SizedBox(height: 32),
+      SizedBox(height: 32),
       LayoutBuilder(
         builder: (context, c) {
           final columns = c.maxWidth < 600
@@ -601,9 +604,11 @@ class _CategoryCard extends StatelessWidget {
         onTap: onTap,
         hoverColor: category.color.withValues(alpha: .05),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(0, 24, 16, 24),
-          decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: AppColors.line)),
+          padding: EdgeInsets.fromLTRB(0, 24, 16, 24),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: SitePalette.of(context).line),
+            ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,19 +639,19 @@ class _CategoryCard extends StatelessWidget {
                           ),
                         ),
                         Icon(category.icon, size: 25, color: category.color),
-                        const SizedBox(width: 18),
-                        const Icon(
+                        SizedBox(width: 18),
+                        Icon(
                           Icons.arrow_forward,
                           size: 20,
-                          color: AppColors.muted,
+                          color: SitePalette.of(context).muted,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 13),
+                    SizedBox(height: 13),
                     Text(
                       category.description!,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.muted,
+                        color: SitePalette.of(context).muted,
                         height: 1.65,
                       ),
                     ),
@@ -676,13 +681,13 @@ class _Featured extends StatelessWidget {
         trailing: MediaQuery.sizeOf(context).width > 700
             ? TextButton.icon(
                 onPressed: () => onExplore(null),
-                label: const Text('Ver todas'),
+                label: Text('Ver todas'),
                 iconAlignment: IconAlignment.end,
-                icon: const Icon(Icons.arrow_forward),
+                icon: Icon(Icons.arrow_forward),
               )
             : null,
       ),
-      const SizedBox(height: 32),
+      SizedBox(height: 32),
       LayoutBuilder(
         builder: (context, c) {
           final cols = c.maxWidth < 600
@@ -737,7 +742,7 @@ class _MapCalloutState extends State<_MapCallout> {
     borderRadius: BorderRadius.circular(12),
     child: Container(
       padding: EdgeInsets.zero,
-      color: AppColors.navy,
+      color: SitePalette.of(context).navy,
       child: LayoutBuilder(
         builder: (context, c) {
           final narrow = c.maxWidth < 800;
@@ -747,30 +752,30 @@ class _MapCalloutState extends State<_MapCallout> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SectionEyebrow('El mapa vivo', light: true),
-                const SizedBox(height: 20),
+                SectionEyebrow('El mapa vivo', light: true),
+                SizedBox(height: 20),
                 Text(
                   'Cada punto guarda\nalgo para contar.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.displayMedium?.copyWith(color: AppColors.cream),
+                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                    color: SitePalette.of(context).cream,
+                  ),
                 ),
-                const SizedBox(height: 18),
+                SizedBox(height: 18),
                 Text(
                   'Recorré La Plata por barrio, época o curiosidad. Encontrá historias documentadas y aportes de vecinos, familias e instituciones.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.cream.withValues(alpha: .72),
+                    color: SitePalette.of(context).cream.withValues(alpha: .72),
                   ),
                 ),
-                const SizedBox(height: 26),
+                SizedBox(height: 26),
                 FilledButton.icon(
                   onPressed: widget.onExplore,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.yellow,
-                    foregroundColor: AppColors.ink,
+                    foregroundColor: SitePalette.of(context).ink,
                   ),
-                  icon: const Icon(Icons.map_outlined),
-                  label: const Text('Abrir el mapa'),
+                  icon: Icon(Icons.map_outlined),
+                  label: Text('Abrir el mapa'),
                 ),
               ],
             ),
@@ -810,37 +815,37 @@ class _TrustSection extends StatelessWidget {
       final copy = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionEyebrow('Un mapa entre todos'),
-          const SizedBox(height: 18),
+          SectionEyebrow('Un mapa entre todos'),
+          SizedBox(height: 18),
           Text(
             'Tu historia también puede\nformar parte del mapa.',
             style: Theme.of(context).textTheme.displayMedium,
           ),
-          const SizedBox(height: 18),
+          SizedBox(height: 18),
           Text(
             'Puede ser una persona, un comercio, una institución, una costumbre, una fotografía, un lugar especial o algo que esté ocurriendo hoy. Cada aporte se revisa antes de publicarse.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: SitePalette.of(context).muted,
+            ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           Text(
             'La Plata también se cuenta desde quienes la viven.',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppColors.muted,
+              color: SitePalette.of(context).muted,
               fontStyle: FontStyle.italic,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           FilledButton.icon(
             onPressed: onContribute,
-            icon: const Icon(Icons.add_a_photo_outlined),
-            label: const Text('Compartir una historia'),
+            icon: Icon(Icons.add_a_photo_outlined),
+            label: Text('Compartir una historia'),
           ),
         ],
       );
       final principles = Column(
-        children: const [
+        children: [
           _Principle(
             icon: Icons.verified_outlined,
             title: 'Claridad editorial',
@@ -864,13 +869,13 @@ class _TrustSection extends StatelessWidget {
       return narrow
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [copy, const SizedBox(height: 40), principles],
+              children: [copy, SizedBox(height: 40), principles],
             )
           : Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(child: copy),
-                const SizedBox(width: 80),
+                SizedBox(width: 80),
                 Expanded(child: principles),
               ],
             );
@@ -889,7 +894,7 @@ class _Principle extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 14),
+    padding: EdgeInsets.symmetric(vertical: 14),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -902,14 +907,17 @@ class _Principle extends StatelessWidget {
           ),
           child: Icon(icon, color: AppColors.lindenGreen),
         ),
-        const SizedBox(width: 15),
+        SizedBox(width: 15),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(text, style: const TextStyle(color: AppColors.muted)),
+              SizedBox(height: 4),
+              Text(
+                text,
+                style: TextStyle(color: SitePalette.of(context).muted),
+              ),
             ],
           ),
         ),
@@ -938,10 +946,10 @@ class _DesktopWhatsAppCallout extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     height: 390,
     child: ColoredBox(
-      color: AppColors.cream,
+      color: SitePalette.of(context).cream,
       child: Stack(
         children: [
-          const Positioned(
+          Positioned(
             top: 105,
             right: 0,
             bottom: 0,
@@ -959,13 +967,13 @@ class _DesktopWhatsAppCallout extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const Expanded(child: _WhatsAppCopy()),
-                        const SizedBox(width: 280),
+                        Expanded(child: _WhatsAppCopy()),
+                        SizedBox(width: 280),
                         _WhatsAppButton(onAsk: onAsk),
                       ],
                     ),
                   ),
-                  const Positioned(
+                  Positioned(
                     top: 0,
                     right: 205,
                     child: _BoundaryDardito(width: 270, height: 360),
@@ -991,13 +999,13 @@ class _CompactWhatsAppCallout extends StatelessWidget {
       final artHeight = phone ? 250.0 : 290.0;
       final artWidth = phone ? 188.0 : 218.0;
       return ColoredBox(
-        color: AppColors.cream,
+        color: SitePalette.of(context).cream,
         child: Stack(
           alignment: Alignment.topCenter,
           children: [
             Container(
               width: double.infinity,
-              margin: const EdgeInsets.only(top: 80),
+              margin: EdgeInsets.only(top: 80),
               padding: EdgeInsets.fromLTRB(24, phone ? 205 : 230, 24, 52),
               color: AppColors.yellow,
               child: MaxWidth(
@@ -1006,7 +1014,7 @@ class _CompactWhatsAppCallout extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _WhatsAppCopy(compact: phone),
-                    const SizedBox(height: 28),
+                    SizedBox(height: 28),
                     _WhatsAppButton(onAsk: onAsk),
                   ],
                 ),
@@ -1031,16 +1039,16 @@ class _WhatsAppCopy extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SectionEyebrow('También en WhatsApp'),
-      const SizedBox(height: 16),
+      SectionEyebrow('También en WhatsApp'),
+      SizedBox(height: 16),
       Text(
         'Una conversación puede ser el comienzo de otro recorrido.',
         style: Theme.of(
           context,
         ).textTheme.displayMedium?.copyWith(fontSize: compact ? 36 : 42),
       ),
-      const SizedBox(height: 12),
-      const Text(
+      SizedBox(height: 12),
+      Text(
         'Preguntá por tu barrio, una persona, un lugar, una época o pedile a Dardito una historia al azar.',
       ),
     ],
@@ -1055,12 +1063,12 @@ class _WhatsAppButton extends StatelessWidget {
   Widget build(BuildContext context) => FilledButton.icon(
     onPressed: onAsk,
     style: FilledButton.styleFrom(
-      backgroundColor: AppColors.ink,
-      foregroundColor: AppColors.paper,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+      backgroundColor: SitePalette.of(context).ink,
+      foregroundColor: SitePalette.of(context).paper,
+      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 18),
     ),
-    icon: const Icon(Icons.forum_outlined),
-    label: const Text('Abrir WhatsApp'),
+    icon: Icon(Icons.forum_outlined),
+    label: Text('Abrir WhatsApp'),
   );
 }
 
@@ -1084,7 +1092,7 @@ class _BoundaryDardito extends StatelessWidget {
           Positioned.fill(
             child: ExcludeSemantics(
               child: Transform.translate(
-                offset: const Offset(8, 12),
+                offset: Offset(8, 12),
                 child: ImageFiltered(
                   imageFilter: ImageFilter.blur(sigmaX: 9, sigmaY: 9),
                   child: ColorFiltered(
@@ -1122,21 +1130,21 @@ class _Footer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    color: AppColors.ink,
+    color: SitePalette.of(context).ink,
     child: LayoutBuilder(
       builder: (context, constraints) {
         final mobile = constraints.maxWidth < 700;
         final brand = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _FooterBrandMark(),
-            const SizedBox(height: 20),
+            _FooterBrandMark(),
+            SizedBox(height: 20),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
+              constraints: BoxConstraints(maxWidth: 430),
               child: Text(
                 'Historias, lugares y personas de ayer y de hoy que hacen única a La Plata.',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppColors.cream.withValues(alpha: .72),
+                  color: SitePalette.of(context).cream.withValues(alpha: .72),
                   height: 1.35,
                 ),
               ),
@@ -1156,18 +1164,20 @@ class _Footer extends StatelessWidget {
               children: [
                 TextButton(
                   onPressed: () => onOpenLegal(LegalDocument.terms),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.paper),
-                  child: const Text('Términos y condiciones'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: SitePalette.of(context).paper,
+                  ),
+                  child: Text('Términos y condiciones'),
                 ),
               ],
             ),
-            const SizedBox(height: 22),
+            SizedBox(height: 22),
             Text(
               'La ciudad nunca termina de contarse.',
               textAlign: mobile ? TextAlign.left : TextAlign.right,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(color: AppColors.cream),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: SitePalette.of(context).cream,
+              ),
             ),
           ],
         );
@@ -1183,34 +1193,36 @@ class _Footer extends StatelessWidget {
                 if (mobile)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [brand, const SizedBox(height: 38), links],
+                    children: [brand, SizedBox(height: 38), links],
                   )
                 else
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(flex: 5, child: brand),
-                      const SizedBox(width: 64),
+                      SizedBox(width: 64),
                       Expanded(flex: 6, child: links),
                     ],
                   ),
-                const SizedBox(height: 44),
-                Divider(color: AppColors.cream.withValues(alpha: .14)),
-                const SizedBox(height: 22),
+                SizedBox(height: 44),
+                Divider(
+                  color: SitePalette.of(context).cream.withValues(alpha: .14),
+                ),
+                SizedBox(height: 22),
                 if (mobile)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         '© 2026 El Mapa de las Historias de La Plata',
                         style: TextStyle(color: Colors.white54, fontSize: 12),
                       ),
-                      const SizedBox(height: 8),
-                      const _SimbiosisDigitalLink(),
+                      SizedBox(height: 8),
+                      _SimbiosisDigitalLink(),
                     ],
                   )
                 else
-                  const Row(
+                  Row(
                     children: [
                       Text(
                         '© 2026 El Mapa de las Historias de La Plata',
@@ -1233,7 +1245,7 @@ class _FooterBrandMark extends StatelessWidget {
   const _FooterBrandMark();
 
   @override
-  Widget build(BuildContext context) => const ProjectMark(light: true);
+  Widget build(BuildContext context) => ProjectMark(light: true);
 }
 
 class _SimbiosisDigitalLink extends StatelessWidget {
@@ -1247,7 +1259,7 @@ class _SimbiosisDigitalLink extends StatelessWidget {
         mode: LaunchMode.externalApplication,
       );
     },
-    child: const Padding(
+    child: Padding(
       padding: EdgeInsets.symmetric(vertical: 4),
       child: Text(
         'Desarrollado por SimbiosisDigital',
@@ -1267,7 +1279,7 @@ class _RefinedStoryCard extends StatelessWidget {
     clipBehavior: Clip.antiAlias,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(10),
-      side: const BorderSide(color: AppColors.line),
+      side: BorderSide(color: SitePalette.of(context).line),
     ),
     child: InkWell(
       onTap: onTap,
@@ -1279,7 +1291,7 @@ class _RefinedStoryCard extends StatelessWidget {
             Row(
               children: [
                 Container(width: 3, height: 18, color: story.category.color),
-                const SizedBox(width: 9),
+                SizedBox(width: 9),
                 Expanded(
                   child: Text(
                     story.category.label.toUpperCase(),
@@ -1291,68 +1303,71 @@ class _RefinedStoryCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.arrow_outward_rounded,
                   size: 20,
-                  color: AppColors.muted,
+                  color: SitePalette.of(context).muted,
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            const SizedBox(height: 7),
+            SizedBox(height: 20),
+            SizedBox(height: 7),
             Text(
               story.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.headlineMedium,
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Text(
               story.shortStory,
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: AppColors.muted),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: SitePalette.of(context).muted,
+              ),
             ),
             if (story.publicAuthor != null) ...[
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 'Aporte de: ${story.publicAuthor}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12),
+                style: TextStyle(fontSize: 12),
               ),
             ],
-            const Spacer(),
-            const Divider(color: AppColors.line, height: 28),
+            Spacer(),
+            Divider(color: SitePalette.of(context).line, height: 28),
             Row(
               children: [
-                const Icon(Icons.location_on_outlined, size: 15),
-                const SizedBox(width: 5),
+                Icon(Icons.location_on_outlined, size: 15),
+                SizedBox(width: 5),
                 Expanded(
                   child: Text(
                     story.neighborhood,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                 ),
                 Text(
                   '${story.readMinutes} min',
-                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: SitePalette.of(context).muted,
+                  ),
                 ),
-                const SizedBox(width: 12),
-                const Icon(
+                SizedBox(width: 12),
+                Icon(
                   Icons.favorite_rounded,
                   size: 14,
-                  color: AppColors.rust,
+                  color: SitePalette.of(context).rust,
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Text(
                   '${story.likeCount}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: SitePalette.of(context).muted,
+                  ),
                 ),
               ],
             ),

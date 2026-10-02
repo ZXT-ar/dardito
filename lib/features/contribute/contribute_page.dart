@@ -1,3 +1,4 @@
+import '../../core/theme/site_palette.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -97,20 +98,20 @@ class _ContributePageState extends State<ContributePage> {
       final accepted = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Elegir fotos desde archivos'),
-          content: const Text(
+          title: Text('Elegir fotos desde archivos'),
+          content: Text(
             'Dardito abrirá el explorador de archivos de tu dispositivo. '
             'Sólo podrá leer las imágenes que elijas y no usará la cámara.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar'),
+              child: Text('Cancelar'),
             ),
             FilledButton.icon(
               onPressed: () => Navigator.of(context).pop(true),
-              icon: const Icon(Icons.folder_open_rounded),
-              label: const Text('Abrir archivos'),
+              icon: Icon(Icons.folder_open_rounded),
+              label: Text('Abrir archivos'),
             ),
           ],
         ),
@@ -203,13 +204,13 @@ class _ContributePageState extends State<ContributePage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.swap_horiz_rounded),
-              title: const Text('Cambiar esta foto'),
+              leading: Icon(Icons.swap_horiz_rounded),
+              title: Text('Cambiar esta foto'),
               onTap: () => Navigator.pop(context, 'replace'),
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline_rounded),
-              title: const Text('Quitar esta foto'),
+              leading: Icon(Icons.delete_outline_rounded),
+              title: Text('Quitar esta foto'),
               onTap: () => Navigator.pop(context, 'remove'),
             ),
           ],
@@ -231,7 +232,7 @@ class _ContributePageState extends State<ContributePage> {
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Revisá el contenido'),
+        title: Text('Revisá el contenido'),
         content: Text(
           'Detectamos expresiones que podrían describir contenido violento, sexual '
           'o contrario a las reglas (${matches.take(4).join(', ')}). '
@@ -243,11 +244,11 @@ class _ContributePageState extends State<ContributePage> {
               Navigator.pop(context);
               widget.onOpenLegal(LegalDocument.terms);
             },
-            child: const Text('Ver términos'),
+            child: Text('Ver términos'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Volver a editar'),
+            child: Text('Volver a editar'),
           ),
         ],
       ),
@@ -323,7 +324,7 @@ class _ContributePageState extends State<ContributePage> {
           child: Column(
             children: [
               _Hero(user: widget.user, onSignOut: widget.onSignOut),
-              const SizedBox(height: 56),
+              SizedBox(height: 56),
               MaxWidth(
                 child: _sent
                     ? _Success(onExplore: widget.onExplore)
@@ -363,8 +364,8 @@ class _ContributePageState extends State<ContributePage> {
                           if (constraints.maxWidth <= 820) {
                             return Column(
                               children: [
-                                const _ReviewGuide(),
-                                const SizedBox(height: 38),
+                                _ReviewGuide(),
+                                SizedBox(height: 38),
                                 form,
                               ],
                             );
@@ -372,15 +373,15 @@ class _ContributePageState extends State<ContributePage> {
                           return Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const SizedBox(width: 330, child: _ReviewGuide()),
-                              const SizedBox(width: 54),
+                              SizedBox(width: 330, child: _ReviewGuide()),
+                              SizedBox(width: 54),
                               Expanded(child: form),
                             ],
                           );
                         },
                       ),
               ),
-              const SizedBox(height: 110),
+              SizedBox(height: 110),
             ],
           ),
         ),
@@ -420,21 +421,21 @@ class _Hero extends StatelessWidget {
           final copy = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SectionEyebrow('Historias de la gente'),
-              const SizedBox(height: 18),
+              SectionEyebrow('Historias de la gente'),
+              SizedBox(height: 18),
               Text(
                 'Vos también sos parte\ndel mapa.',
                 style: Theme.of(context).textTheme.displayLarge?.copyWith(
                   fontSize: MediaQuery.sizeOf(context).width < 600 ? 48 : 64,
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 16),
+              Text(
                 'Compartí un recuerdo, una fotografía o un relato de tu barrio. '
                 'Dardito lo guarda para que nuestro equipo pueda revisarlo con cuidado.',
                 style: TextStyle(fontSize: 18, height: 1.45),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               _SignedInChip(user: user, onSignOut: onSignOut),
             ],
           );
@@ -442,14 +443,14 @@ class _Hero extends StatelessWidget {
               ? Row(
                   children: [
                     SizedBox(width: 280, height: 390, child: character),
-                    const SizedBox(width: 44),
+                    SizedBox(width: 44),
                     Expanded(child: copy),
                   ],
                 )
               : Column(
                   children: [
                     SizedBox(height: 220, child: character),
-                    const SizedBox(height: 22),
+                    SizedBox(height: 22),
                     copy,
                   ],
                 );
@@ -465,9 +466,9 @@ class _SignedInChip extends StatelessWidget {
   final VoidCallback onSignOut;
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
+    padding: EdgeInsets.fromLTRB(8, 8, 12, 8),
     decoration: BoxDecoration(
-      color: AppColors.ink,
+      color: SitePalette.of(context).inset,
       borderRadius: BorderRadius.circular(18),
     ),
     child: Row(
@@ -480,17 +481,17 @@ class _SignedInChip extends StatelessWidget {
             color: AppColors.yellow,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.g_mobiledata_rounded),
+          child: Icon(Icons.g_mobiledata_rounded, color: AppColors.ink),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Flexible(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'IDENTIDAD CONECTADA',
                 style: TextStyle(
-                  color: AppColors.yellow,
+                  color: SitePalette.of(context).rust,
                   fontSize: 9,
                   fontWeight: FontWeight.w900,
                 ),
@@ -498,8 +499,8 @@ class _SignedInChip extends StatelessWidget {
               Text(
                 user.email,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.paper,
+                style: TextStyle(
+                  color: SitePalette.of(context).ink,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -509,9 +510,9 @@ class _SignedInChip extends StatelessWidget {
         IconButton(
           tooltip: 'Cerrar sesión',
           onPressed: onSignOut,
-          icon: const Icon(
+          icon: Icon(
             Icons.logout_rounded,
-            color: AppColors.paper,
+            color: SitePalette.of(context).ink,
             size: 18,
           ),
         ),
@@ -530,32 +531,28 @@ class _ReviewGuide extends StatelessWidget {
         '¿Qué pasa después?',
         style: Theme.of(context).textTheme.headlineMedium,
       ),
-      const SizedBox(height: 24),
-      const _Step(
-        '01',
-        'Recibimos tu historia',
-        'Queda guardada de forma privada.',
-      ),
-      const _Step(
+      SizedBox(height: 24),
+      _Step('01', 'Recibimos tu historia', 'Queda guardada de forma privada.'),
+      _Step(
         '02',
         'La revisamos',
         'Validamos fuentes, permisos y datos sensibles.',
       ),
-      const _Step(
+      _Step(
         '03',
         'Te contactamos',
         'Usamos el email con el que te autentificaste.',
       ),
       Container(
-        padding: const EdgeInsets.all(18),
+        padding: EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: AppColors.paper,
-          border: Border.all(color: AppColors.line),
+          color: SitePalette.of(context).paper,
+          border: Border.all(color: SitePalette.of(context).line),
           borderRadius: BorderRadius.circular(18),
         ),
-        child: const Text(
+        child: Text(
           'Enviar una historia no implica su publicación automática.',
-          style: TextStyle(color: AppColors.muted),
+          style: TextStyle(color: SitePalette.of(context).muted),
         ),
       ),
     ],
@@ -569,24 +566,27 @@ class _Step extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 24),
+    padding: EdgeInsets.only(bottom: 24),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           number,
-          style: const TextStyle(
-            color: AppColors.rust,
+          style: TextStyle(
+            color: SitePalette.of(context).rust,
             fontWeight: FontWeight.w900,
           ),
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: Theme.of(context).textTheme.titleMedium),
-              Text(text, style: const TextStyle(color: AppColors.muted)),
+              Text(
+                text,
+                style: TextStyle(color: SitePalette.of(context).muted),
+              ),
             ],
           ),
         ),
@@ -658,14 +658,14 @@ class _ContributionForm extends StatelessWidget {
               'Contanos tu historia',
               style: Theme.of(context).textTheme.headlineLarge,
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'No hace falta escribir perfecto. Lo importante es que no se pierda.',
-              style: TextStyle(color: AppColors.muted),
+              style: TextStyle(color: SitePalette.of(context).muted),
             ),
-            const SizedBox(height: 30),
-            const _FieldLabel('Título o idea principal'),
-            const SizedBox(height: 8),
+            SizedBox(height: 30),
+            _FieldLabel('Título o idea principal'),
+            SizedBox(height: 8),
             TextFormField(
               controller: title,
               maxLength: storyTitleLimit,
@@ -676,14 +676,14 @@ class _ContributionForm extends StatelessWidget {
               validator: (value) => (value?.trim().length ?? 0) < 3
                   ? 'Escribí un título de al menos 3 caracteres'
                   : null,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Ej: El almacén de mi abuelo',
                 counterText: '',
               ),
             ),
-            const SizedBox(height: 20),
-            const _FieldLabel('¿Qué pasó?'),
-            const SizedBox(height: 8),
+            SizedBox(height: 20),
+            _FieldLabel('¿Qué pasó?'),
+            SizedBox(height: 8),
             TextFormField(
               controller: story,
               minLines: 5,
@@ -696,12 +696,12 @@ class _ContributionForm extends StatelessWidget {
               validator: (value) => (value?.trim().length ?? 0) < 30
                   ? 'Contanos un poco más (al menos 30 caracteres)'
                   : null,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText:
                     'Escribí el relato con todos los detalles que recuerdes…',
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             LayoutBuilder(
               builder: (context, constraints) {
                 final children = [
@@ -728,7 +728,7 @@ class _ContributionForm extends StatelessWidget {
                     ? Column(
                         children: [
                           children.first,
-                          const SizedBox(height: 20),
+                          SizedBox(height: 20),
                           children.last,
                         ],
                       )
@@ -736,20 +736,20 @@ class _ContributionForm extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(child: children.first),
-                          const SizedBox(width: 16),
+                          SizedBox(width: 16),
                           Expanded(child: children.last),
                         ],
                       );
               },
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             LayoutBuilder(
               builder: (context, constraints) {
                 final periodField = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _FieldLabel('Fecha o período de tiempo'),
-                    const SizedBox(height: 8),
+                    _FieldLabel('Fecha o período de tiempo'),
+                    SizedBox(height: 8),
                     TextFormField(
                       controller: period,
                       maxLength: storyPeriodLimit,
@@ -760,7 +760,7 @@ class _ContributionForm extends StatelessWidget {
                       validator: (value) => (value?.trim().length ?? 0) < 2
                           ? 'Indicá una fecha o período aproximado'
                           : null,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: 'Ej: 1940–1960 o década de 1980',
                         counterText: '',
                       ),
@@ -777,8 +777,8 @@ class _ContributionForm extends StatelessWidget {
                       items: evidenceLevels,
                       onChanged: onEvidence,
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
+                    SizedBox(height: 8),
+                    Text(
                       'Documentada: historia respaldada y validada a partir de fuentes, archivos, publicaciones, documentos, registros u otros materiales verificables.\n\nAporte de vecinos: historia, dato, testimonio o material compartido por vecinos, familias, comercios, clubes, escuelas o instituciones, que luego puede ser revisado, ampliado y contrastado por el equipo.',
                     ),
                   ],
@@ -787,7 +787,7 @@ class _ContributionForm extends StatelessWidget {
                     ? Column(
                         children: [
                           periodField,
-                          const SizedBox(height: 20),
+                          SizedBox(height: 20),
                           evidenceField,
                         ],
                       )
@@ -795,20 +795,23 @@ class _ContributionForm extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(child: periodField),
-                          const SizedBox(width: 16),
+                          SizedBox(width: 16),
                           Expanded(child: evidenceField),
                         ],
                       );
               },
             ),
-            const SizedBox(height: 24),
-            const _FieldLabel('Sumar fotos (opcional)'),
-            const SizedBox(height: 6),
-            const Text(
+            SizedBox(height: 24),
+            _FieldLabel('Sumar fotos (opcional)'),
+            SizedBox(height: 6),
+            Text(
               'Hasta 3 fotos JPG, PNG o WebP · 8 MB por foto · 20 MB en total.',
-              style: TextStyle(color: AppColors.muted, fontSize: 12),
+              style: TextStyle(
+                color: SitePalette.of(context).muted,
+                fontSize: 12,
+              ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               children: List.generate(
                 storyPhotoLimit,
@@ -827,13 +830,13 @@ class _ContributionForm extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
             CheckboxListTile(
               value: materialConsent,
               onChanged: onMaterialConsent,
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
-              title: const Text(
+              title: Text(
                 'Confirmo que puedo compartir este material y autorizo su revisión.',
                 style: TextStyle(fontSize: 13),
               ),
@@ -846,7 +849,7 @@ class _ContributionForm extends StatelessWidget {
               title: Wrap(
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     'Declaro que he leído y acepto los ',
                     style: TextStyle(fontSize: 13, height: 1.4),
                   ),
@@ -857,16 +860,16 @@ class _ContributionForm extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: isSubmitting ? null : onSubmit,
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  padding: EdgeInsets.symmetric(vertical: 18),
                 ),
-                icon: const Icon(Icons.send_outlined),
-                label: const Text('Enviar para revisión'),
+                icon: Icon(Icons.send_outlined),
+                label: Text('Enviar para revisión'),
               ),
             ),
           ],
@@ -908,14 +911,14 @@ class _DropdownField extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       _FieldLabel(label),
-      const SizedBox(height: 8),
+      SizedBox(height: 8),
       DropdownButtonFormField<String>(
         initialValue: value,
         isExpanded: true,
         borderRadius: BorderRadius.circular(18),
-        dropdownColor: AppColors.paper,
+        dropdownColor: SitePalette.of(context).paper,
         validator: (value) => value == null ? 'Elegí una opción' : null,
-        decoration: _dropdownDecoration(hint),
+        decoration: _dropdownDecoration(context, hint),
         items: items
             .map(
               (item) =>
@@ -945,18 +948,18 @@ class _PhotoSlot extends StatelessWidget {
             ? 'Elegir desde archivos'
             : 'Cambiar o quitar foto',
         child: Material(
-          color: AppColors.paper,
+          color: SitePalette.of(context).paper,
           borderRadius: BorderRadius.circular(18),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                border: Border.all(color: AppColors.line),
+                border: Border.all(color: SitePalette.of(context).line),
                 borderRadius: BorderRadius.circular(18),
               ),
               child: photo == null
-                  ? const Column(
+                  ? Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.folder_open_rounded, size: 30),
@@ -971,12 +974,12 @@ class _PhotoSlot extends StatelessWidget {
                       fit: StackFit.expand,
                       children: [
                         Image.memory(photo!.bytes, fit: BoxFit.cover),
-                        const Positioned(
+                        Positioned(
                           right: 8,
                           top: 8,
                           child: CircleAvatar(
                             radius: 15,
-                            backgroundColor: AppColors.paper,
+                            backgroundColor: SitePalette.of(context).paper,
                             child: Icon(Icons.more_horiz_rounded, size: 18),
                           ),
                         ),
@@ -999,7 +1002,11 @@ class _LegalLink extends StatelessWidget {
     onTap: onTap,
     child: Text(
       label,
-      style: const TextStyle(color: AppColors.rust, fontSize: 13, height: 1.4),
+      style: TextStyle(
+        color: SitePalette.of(context).rust,
+        fontSize: 13,
+        height: 1.4,
+      ),
     ),
   );
 }
@@ -1009,37 +1016,38 @@ class _FieldLabel extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) =>
-      Text(text, style: const TextStyle(fontWeight: FontWeight.w800));
+      Text(text, style: TextStyle(fontWeight: FontWeight.w800));
 }
 
-InputDecoration _dropdownDecoration(String hintText) => InputDecoration(
-  hintText: hintText,
-  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-  border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
-  enabledBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(18),
-    borderSide: const BorderSide(color: AppColors.line),
-  ),
-);
+InputDecoration _dropdownDecoration(BuildContext context, String hintText) =>
+    InputDecoration(
+      hintText: hintText,
+      contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: SitePalette.of(context).line),
+      ),
+    );
 
 class _UploadOverlay extends StatelessWidget {
   const _UploadOverlay({required this.progress});
   final double progress;
   @override
   Widget build(BuildContext context) => ColoredBox(
-    color: AppColors.ink.withValues(alpha: .82),
+    color: SitePalette.of(context).ink.withValues(alpha: .82),
     child: Center(
       child: TweenAnimationBuilder<double>(
         tween: Tween(end: progress.clamp(0, 1)),
-        duration: const Duration(milliseconds: 350),
+        duration: Duration(milliseconds: 350),
         builder: (context, value, _) => Container(
           width: 420,
-          margin: const EdgeInsets.all(24),
-          padding: const EdgeInsets.all(30),
+          margin: EdgeInsets.all(24),
+          padding: EdgeInsets.all(30),
           decoration: BoxDecoration(
-            color: AppColors.paper,
+            color: SitePalette.of(context).paper,
             borderRadius: BorderRadius.circular(30),
-            boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 28)],
+            boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 28)],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1049,7 +1057,7 @@ class _UploadOverlay extends StatelessWidget {
                 width: 82,
                 height: 82,
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               Text(
                 value < .84
                     ? 'Dardito está guardando tu historia…'
@@ -1057,21 +1065,21 @@ class _UploadOverlay extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
-              const SizedBox(height: 12),
-              const Text(
+              SizedBox(height: 12),
+              Text(
                 'Esperá, no salgas ni cierres esta ventana.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.muted),
+                style: TextStyle(color: SitePalette.of(context).muted),
               ),
-              const SizedBox(height: 22),
+              SizedBox(height: 22),
               LinearProgressIndicator(
                 value: value == 0 ? null : value,
                 minHeight: 10,
                 borderRadius: BorderRadius.circular(10),
                 color: AppColors.yellow,
-                backgroundColor: AppColors.line,
+                backgroundColor: SitePalette.of(context).line,
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Text('${(value * 100).round()}%'),
             ],
           ),
@@ -1086,31 +1094,31 @@ class _Success extends StatelessWidget {
   final VoidCallback onExplore;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 50),
+    padding: EdgeInsets.symmetric(vertical: 50),
     child: Column(
       children: [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 43,
           backgroundColor: AppColors.yellow,
           child: Icon(Icons.favorite_rounded, size: 38),
         ),
-        const SizedBox(height: 28),
+        SizedBox(height: 28),
         Text(
           'Tu historia ya es parte\ndel camino.',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.displayMedium,
         ),
-        const SizedBox(height: 16),
-        const Text(
+        SizedBox(height: 16),
+        Text(
           'La recibimos correctamente. Antes de sumarla al mapa, nuestro equipo la revisará.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.muted, fontSize: 16),
+          style: TextStyle(color: SitePalette.of(context).muted, fontSize: 16),
         ),
-        const SizedBox(height: 30),
+        SizedBox(height: 30),
         FilledButton.icon(
           onPressed: onExplore,
-          icon: const Icon(Icons.map_outlined),
-          label: const Text('Seguir explorando'),
+          icon: Icon(Icons.map_outlined),
+          label: Text('Seguir explorando'),
         ),
       ],
     ),

@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
-import 'dardito_details.dart';
+import '../theme/site_palette.dart';
+import '../theme/theme_controller.dart';
 
-/// Ink on the opening map; gilt lettering on the returning book spine.
+/// Ink on the opening map, with a paper surface when returning on scroll.
 class BookNavigation extends StatelessWidget {
   const BookNavigation({
     super.key,
     required this.onNavigate,
     this.spine = false,
+    this.currentIndex = 0,
   });
   final ValueChanged<int> onNavigate;
   final bool spine;
+  final int currentIndex;
   static const labels = [
     'Inicio',
     'Explorar',
@@ -25,7 +28,8 @@ class BookNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ink = spine ? const Color(0xFF352918) : const Color(0xFF463D29);
+    final palette = SitePalette.of(context);
+    final ink = palette.ink;
     final content = SizedBox(
       height: 76,
       child: Padding(
@@ -37,10 +41,7 @@ class BookNavigation extends StatelessWidget {
                 header: true,
                 child: Row(
                   children: [
-                    if (spine)
-                      const DarditoDetail(clasp: true, size: 34)
-                    else
-                      Icon(Icons.menu_book_outlined, color: ink, size: 30),
+                    Icon(Icons.menu_book_outlined, color: ink, size: 30),
                     if (bounds.maxWidth > 960) ...[
                       const SizedBox(width: 12),
                       Text(
@@ -70,7 +71,7 @@ class BookNavigation extends StatelessWidget {
                             label: labels[i],
                             icon: icons[i],
                             ink: ink,
-                            selected: i == 0,
+                            selected: i == currentIndex,
                             spine: spine,
                             onTap: () => onNavigate(i),
                           ),
@@ -79,6 +80,8 @@ class BookNavigation extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(width: 12),
+              const SiteThemeButton(),
             ],
           ),
         ),
@@ -86,31 +89,22 @@ class BookNavigation extends StatelessWidget {
     );
     return Semantics(
       container: true,
-      label: spine ? 'Navegación del libro' : 'Navegación sobre el mapa',
+      label: spine ? 'Navegación al volver' : 'Navegación sobre el mapa',
       child: spine
           ? DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(5),
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF8F5A2E),
-                    Color(0xFFD3A46B),
-                    Color(0xFFC18D53),
-                    Color(0xFF8C572D),
-                  ],
-                  stops: [0, .22, .68, 1],
-                ),
-                boxShadow: const [
+                color: palette.paper.withValues(alpha: .97),
+                border: Border.all(color: palette.line.withValues(alpha: .6)),
+                boxShadow: [
                   BoxShadow(
-                    color: Color(0x330D1710),
+                    color: Colors.black.withValues(alpha: .08),
                     blurRadius: 18,
-                    offset: Offset(0, 7),
+                    offset: const Offset(0, 5),
                   ),
                 ],
               ),
-              child: CustomPaint(painter: _SpineTooling(), child: content),
+              child: content,
             )
           : content,
     );
@@ -143,9 +137,7 @@ class _InkLinkState extends State<_InkLink> {
     final duration = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 200);
-    final color = active
-        ? (widget.spine ? const Color(0xFF342512) : const Color(0xFF94671B))
-        : widget.ink;
+    final color = active ? SitePalette.of(context).rust : widget.ink;
     return Semantics(
       button: true,
       selected: widget.selected,
@@ -235,34 +227,4 @@ class _InkUnderline extends CustomPainter {
   @override
   bool shouldRepaint(_InkUnderline old) =>
       old.color != color || old.progress != progress;
-}
-
-class _SpineTooling extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final grain = Paint()
-      ..color = const Color(0xFF69411F).withValues(alpha: .12);
-    for (var i = 0; i < size.width.toInt(); i += 7) {
-      final y = 14.0 + ((i * 17) % 47);
-      canvas.drawCircle(Offset(i.toDouble(), y), .7, grain);
-    }
-    final gilt = Paint()
-      ..color = const Color(0xFF6D4529).withValues(alpha: .6)
-      ..strokeWidth = .8
-      ..style = PaintingStyle.stroke;
-    // Paired rules and raised binding bands suggest the spine, not a card.
-    for (final y in [7.0, size.height - 7]) {
-      canvas.drawLine(Offset(15, y), Offset(size.width - 15, y), gilt);
-    }
-    for (final x in [12.0, 24.0, size.width - 24, size.width - 12]) {
-      canvas.drawLine(
-        Offset(x, 4),
-        Offset(x, size.height - 4),
-        gilt..strokeWidth = 1.2,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_SpineTooling old) => false;
 }
