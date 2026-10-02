@@ -8,12 +8,12 @@ import '../../core/config/whatsapp_config.dart';
 import '../../core/platform/whatsapp_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/ui.dart';
-import '../../data/catalogs/story_catalog.dart';
 import '../../data/models/story.dart';
 import '../legal/legal_page.dart';
 import '../story/story_widgets.dart';
 import 'home_page_refined.dart' show RefinedHomeHero;
 import 'home_cartography.dart';
+import 'paper_discovery.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({
@@ -52,15 +52,18 @@ class HomePage extends StatelessWidget {
           ),
           const SizedBox(height: 96),
           Entrance(
-            child: MaxWidth(child: _Categories(onExplore: onExploreCategory)),
+            child: MaxWidth(
+              child: PaperCategories(onExplore: onExploreCategory),
+            ),
           ),
           const SizedBox(height: 96),
           Entrance(
             delay: const Duration(milliseconds: 80),
             child: MaxWidth(
-              child: _Featured(
+              child: PaperFeatured(
                 stories: stories.where((s) => s.featured).toList(),
-                onExplore: onExplore,
+                onOpen: (story) => showStoryDetails(context, story),
+                onViewAll: () => onExplore(null),
               ),
             ),
           ),
@@ -265,274 +268,6 @@ class _FloatingVisualState extends State<_FloatingVisual>
         child: Transform.rotate(angle: -.006 + value * .012, child: child),
       );
     },
-  );
-}
-
-class _Categories extends StatelessWidget {
-  const _Categories({required this.onExplore});
-  final ValueChanged<String> onExplore;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const SectionTitle(
-        eyebrow: 'Elegí tu curiosidad',
-        title: '¿Qué querés descubrir hoy?',
-        description: 'Cada historia abre una puerta distinta a la ciudad.',
-      ),
-      const SizedBox(height: 32),
-      LayoutBuilder(
-        builder: (context, c) {
-          final columns = c.maxWidth < 600
-              ? 1
-              : c.maxWidth < 960
-              ? 2
-              : 2;
-          final width = (c.maxWidth - (16 * (columns - 1))) / columns;
-          return Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              for (var index = 0; index < _explorationDoors.length; index++)
-                _CategoryCard(
-                  category: _explorationDoor(_explorationDoors[index]),
-                  index: index,
-                  width: width,
-                  onTap: () => onExplore(_explorationDoors[index].id),
-                ),
-            ],
-          );
-        },
-      ),
-    ],
-  );
-}
-
-const _explorationDoors = <StoryCategory>[
-  StoryCategory(
-    'architecture',
-    'Arquitectura',
-    Icons.architecture_rounded,
-    AppColors.rust,
-    description:
-        'Historias vinculadas a edificios, casas, plazas, monumentos, calles, obras, espacios urbanos y al diseño de la ciudad.',
-  ),
-  StoryCategory(
-    'mystery',
-    'Misterios',
-    Icons.auto_awesome_rounded,
-    Color(0xFF5E537B),
-    description:
-        'Historias, enigmas, leyendas, versiones o preguntas que todavía no tienen una explicación del todo clara.',
-  ),
-  StoryCategory(
-    'culture',
-    'Cultura',
-    Icons.theater_comedy_rounded,
-    Color(0xFF9A6B24),
-    description:
-        'Costumbres, expresiones, personajes, espacios, actividades o formas de vivir que forman parte de la identidad y la vida cotidiana de La Plata.',
-  ),
-  StoryCategory(
-    'memory',
-    'Tradición oral',
-    Icons.record_voice_over_outlined,
-    Color(0xFF416A76),
-    description:
-        'Historias que se transmitieron de persona a persona, en familias, barrios, clubes, escuelas o instituciones, aunque no siempre estén escritas o documentadas.',
-  ),
-];
-
-StoryCategory _explorationDoor(StoryCategory fallback) {
-  final description = StoryCatalog.resolve(
-    fallback.id,
-    fallback.label,
-  ).description?.trim();
-  return StoryCategory(
-    fallback.id,
-    fallback.label,
-    fallback.icon,
-    fallback.color,
-    description: description == null || description.isEmpty
-        ? fallback.description
-        : description,
-  );
-}
-
-class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({
-    required this.category,
-    required this.index,
-    required this.width,
-    required this.onTap,
-  });
-
-  final StoryCategory category;
-  final int index;
-  final double width;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => ScrollEntrance(
-    delay: Duration(milliseconds: 60 * index),
-    distance: .055,
-    startScale: .975,
-    child: SizedBox(
-      width: width,
-      child: HoverLift(
-        child: Card(
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(22),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  ScrollEntrance(
-                    delay: Duration(milliseconds: 100 + 60 * index),
-                    distance: .06,
-                    startScale: .84,
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: category.color.withValues(alpha: .12),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Icon(category.icon, color: category.color),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          category.label,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          category.description!,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppColors.muted),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ScrollEntrance(
-                    delay: Duration(milliseconds: 150 + 60 * index),
-                    distance: .08,
-                    child: _CategoryArrow(color: category.color),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-class _CategoryArrow extends StatelessWidget {
-  const _CategoryArrow({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 42,
-    height: 42,
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          color.withValues(alpha: .16),
-          AppColors.yellow.withValues(alpha: .13),
-        ],
-      ),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: color.withValues(alpha: .22)),
-    ),
-    child: Stack(
-      children: [
-        Center(
-          child: Icon(Icons.arrow_outward_rounded, size: 21, color: color),
-        ),
-        Positioned(
-          top: 7,
-          right: 7,
-          child: Container(
-            width: 5,
-            height: 5,
-            decoration: const BoxDecoration(
-              color: AppColors.yellow,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _Featured extends StatelessWidget {
-  const _Featured({required this.stories, required this.onExplore});
-  final List<CityStory> stories;
-  final ValueChanged<CityStory?> onExplore;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      SectionTitle(
-        eyebrow: 'Selección de Dardito',
-        title: 'Historias para empezar',
-        trailing: MediaQuery.sizeOf(context).width > 700
-            ? TextButton.icon(
-                onPressed: () => onExplore(null),
-                label: const Text('Ver todas'),
-                iconAlignment: IconAlignment.end,
-                icon: const Icon(Icons.arrow_forward),
-              )
-            : null,
-      ),
-      const SizedBox(height: 32),
-      LayoutBuilder(
-        builder: (context, c) {
-          final cols = c.maxWidth < 600
-              ? 1
-              : c.maxWidth < 960
-              ? 2
-              : 4;
-          final width = (c.maxWidth - (cols - 1) * 16) / cols;
-          return Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              for (var index = 0; index < stories.length; index++)
-                ScrollEntrance(
-                  delay: Duration(milliseconds: 65 * index),
-                  distance: .055,
-                  startScale: .975,
-                  child: SizedBox(
-                    width: width,
-                    height: 330,
-                    child: StoryCard(
-                      story: stories[index],
-                      onTap: () => showStoryDetails(context, stories[index]),
-                    ),
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
-    ],
   );
 }
 

@@ -13,7 +13,7 @@ import 'package:http/testing.dart';
 
 void main() {
   for (final width in [390.0, 1440.0]) {
-    testWidgets('tarjetas completas y navegación a $width px', (tester) async {
+    testWidgets('pestañas completas y navegación a $width px', (tester) async {
       tester.view.physicalSize = Size(width, 900);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -58,32 +58,25 @@ void main() {
         expect(label, findsOneWidget);
         await Scrollable.ensureVisible(tester.element(label), alignment: .5);
         await tester.pump(const Duration(seconds: 1));
-        final card = find.ancestor(of: label, matching: find.byType(Card));
-        final textWidgets = tester
-            .widgetList<Text>(
-              find.descendant(of: card, matching: find.byType(Text)),
-            )
-            .toList();
-        expect(textWidgets, hasLength(2));
-        expect(textWidgets.last.data, isNotEmpty);
-        expect(textWidgets.last.maxLines, isNull);
-        expect(textWidgets.last.overflow, isNot(TextOverflow.ellipsis));
-        final cardRect = tester.getRect(card);
-        final descriptionRect = tester.getRect(
-          find.text(textWidgets.last.data!),
+        expect(
+          find.ancestor(of: label, matching: find.byType(Card)),
+          findsNothing,
         );
-        expect(descriptionRect.bottom, lessThanOrEqualTo(cardRect.bottom));
+        expect(
+          find.ancestor(of: label, matching: find.byType(Tooltip)),
+          findsOneWidget,
+        );
         await tester.tap(label);
         await tester.pump();
         expect(tester.takeException(), isNull);
       }
       expect(openedMap, 4);
       expect(
-        find.text('Descripción editorial de arquitectura.'),
+        find.byTooltip('Descripción editorial de arquitectura.'),
         findsOneWidget,
       );
       expect(
-        find.textContaining('Historias que se transmitieron'),
+        find.byTooltip('Historias que se transmitieron de persona a persona.'),
         findsOneWidget,
       );
       expect(find.text('Memoria viva'), findsNothing);
