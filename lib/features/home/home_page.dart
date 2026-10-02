@@ -3,7 +3,7 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../../core/widgets/site_footer.dart';
 
 import '../../core/config/whatsapp_config.dart';
 import '../../core/platform/whatsapp_launcher.dart';
@@ -51,13 +51,17 @@ class HomePage extends StatelessWidget {
                     onAsk: () => onNavigate(2),
                   ),
           ),
-          SizedBox(height: 96),
+          SizedBox(
+            height: MediaQuery.sizeOf(context).width >= 700 ? 105.6 : 96,
+          ),
           Entrance(
             child: MaxWidth(
               child: PaperCategories(onExplore: onExploreCategory),
             ),
           ),
-          SizedBox(height: 96),
+          SizedBox(
+            height: MediaQuery.sizeOf(context).width >= 700 ? 105.6 : 96,
+          ),
           Entrance(
             delay: Duration(milliseconds: 80),
             child: MaxWidth(
@@ -68,16 +72,20 @@ class HomePage extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(height: 96),
+          SizedBox(
+            height: MediaQuery.sizeOf(context).width >= 700 ? 105.6 : 96,
+          ),
           Entrance(
             delay: Duration(milliseconds: 180),
             child: MaxWidth(
               child: _TrustSection(onContribute: () => onNavigate(3)),
             ),
           ),
-          SizedBox(height: 96),
+          SizedBox(
+            height: MediaQuery.sizeOf(context).width >= 700 ? 105.6 : 96,
+          ),
           _WhatsAppCallout(onAsk: () => _openWhatsAppConversation(context)),
-          _Footer(onOpenLegal: onOpenLegal),
+          SiteFooter(onOpenLegal: () => onOpenLegal(LegalDocument.terms)),
         ],
       ),
     ),
@@ -591,155 +599,6 @@ class _BoundaryDardito extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    ),
-  );
-}
-
-class _Footer extends StatelessWidget {
-  const _Footer({required this.onOpenLegal});
-  final ValueChanged<LegalDocument> onOpenLegal;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    color: SitePalette.of(context).heroPaper,
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        final mobile = constraints.maxWidth < 700;
-        final brand = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _FooterBrandMark(),
-            SizedBox(height: 20),
-            ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: 430),
-              child: Text(
-                'Historias, lugares y personas de ayer y de hoy que hacen única a La Plata.',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: SitePalette.of(context).muted,
-                  height: 1.35,
-                ),
-              ),
-            ),
-          ],
-        );
-        final links = Column(
-          crossAxisAlignment: mobile
-              ? CrossAxisAlignment.start
-              : CrossAxisAlignment.end,
-          children: [
-            Wrap(
-              spacing: 6,
-              runSpacing: 8,
-              alignment: mobile ? WrapAlignment.start : WrapAlignment.end,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                TextButton(
-                  onPressed: () => onOpenLegal(LegalDocument.terms),
-                  style: TextButton.styleFrom(
-                    foregroundColor: SitePalette.of(context).ink,
-                  ),
-                  child: Text('Términos y condiciones'),
-                ),
-              ],
-            ),
-            SizedBox(height: 22),
-            Text(
-              'La ciudad nunca termina de contarse.',
-              textAlign: mobile ? TextAlign.left : TextAlign.right,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: SitePalette.of(context).ink,
-              ),
-            ),
-          ],
-        );
-        return Padding(
-          padding: EdgeInsets.only(
-            top: mobile ? 54 : 68,
-            bottom: mobile ? 154 : 68,
-          ),
-          child: MaxWidth(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (mobile)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [brand, SizedBox(height: 38), links],
-                  )
-                else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(flex: 5, child: brand),
-                      SizedBox(width: 64),
-                      Expanded(flex: 6, child: links),
-                    ],
-                  ),
-                SizedBox(height: 44),
-                Divider(color: SitePalette.of(context).line),
-                SizedBox(height: 22),
-                if (mobile)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '© 2026 El Mapa de las Historias de La Plata',
-                        style: TextStyle(
-                          color: SitePalette.of(context).muted,
-                          fontSize: 12,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      _SimbiosisDigitalLink(),
-                    ],
-                  )
-                else
-                  Row(
-                    children: [
-                      Text(
-                        '© 2026 El Mapa de las Historias de La Plata',
-                        style: TextStyle(
-                          color: SitePalette.of(context).muted,
-                          fontSize: 12,
-                        ),
-                      ),
-                      Spacer(),
-                      _SimbiosisDigitalLink(),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    ),
-  );
-}
-
-class _FooterBrandMark extends StatelessWidget {
-  const _FooterBrandMark();
-
-  @override
-  Widget build(BuildContext context) => ProjectMark();
-}
-
-class _SimbiosisDigitalLink extends StatelessWidget {
-  const _SimbiosisDigitalLink();
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: () async {
-      await launchUrl(
-        Uri.parse('https://simbiosisdigital.com.ar'),
-        mode: LaunchMode.externalApplication,
-      );
-    },
-    child: Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
-      child: Text(
-        'Desarrollado por SimbiosisDigital',
-        style: TextStyle(color: SitePalette.of(context).muted, fontSize: 12),
       ),
     ),
   );

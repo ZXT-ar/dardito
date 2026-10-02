@@ -463,8 +463,8 @@ class _StoryMapPinState extends State<_StoryMapPin> {
   Widget build(BuildContext context) => Semantics(
     button: true,
     label: widget.story.title,
-    child: Tooltip(
-      message: widget.story.title,
+    child: Semantics(
+      container: false,
       child: MouseRegion(
         onEnter: (_) => setState(() => _hover = true),
         onExit: (_) => setState(() => _hover = false),

@@ -64,7 +64,7 @@ void main() {
         );
         expect(
           find.ancestor(of: label, matching: find.byType(Tooltip)),
-          findsOneWidget,
+          findsNothing,
         );
         await tester.tap(label);
         await tester.pump();
@@ -72,11 +72,21 @@ void main() {
       }
       expect(openedMap, 4);
       expect(
-        find.byTooltip('Descripción editorial de arquitectura.'),
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.hint ==
+                  'Descripción editorial de arquitectura.',
+        ),
         findsOneWidget,
       );
       expect(
-        find.byTooltip('Historias que se transmitieron de persona a persona.'),
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.hint ==
+                  'Historias que se transmitieron de persona a persona.',
+        ),
         findsOneWidget,
       );
       expect(find.text('Memoria viva'), findsNothing);

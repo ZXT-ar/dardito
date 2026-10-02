@@ -1,6 +1,6 @@
 import '../../core/theme/site_palette.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../../core/widgets/site_footer.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/ui.dart';
@@ -140,7 +140,16 @@ class LegalPage extends StatelessWidget {
                 ),
               ),
             ),
-            _LegalFooter(),
+            Builder(
+              builder: (footerContext) => SiteFooter(
+                onOpenLegal: () =>
+                    Scrollable.of(footerContext).position.animateTo(
+                      0,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                    ),
+              ),
+            ),
           ],
         ),
       ),
@@ -355,80 +364,6 @@ class _LegalSection extends StatelessWidget {
           style: TextStyle(height: 1.6, color: SitePalette.of(context).muted),
         ),
       ],
-    ),
-  );
-}
-
-class _LegalFooter extends StatelessWidget {
-  const _LegalFooter();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    color: SitePalette.of(context).canvas,
-    padding: EdgeInsets.symmetric(vertical: 38),
-    child: MaxWidth(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final mobile = constraints.maxWidth < 650;
-          final details = Column(
-            crossAxisAlignment: mobile
-                ? CrossAxisAlignment.start
-                : CrossAxisAlignment.end,
-            children: [
-              Text(
-                'Consultas legales\nlegal@dardito.ar',
-                textAlign: mobile ? TextAlign.left : TextAlign.right,
-                style: TextStyle(
-                  color: SitePalette.of(context).muted,
-                  height: 1.5,
-                ),
-              ),
-              SizedBox(height: 8),
-              _SimbiosisDigitalLink(),
-            ],
-          );
-          return mobile
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ProjectMark(light: true),
-                    SizedBox(height: 24),
-                    details,
-                  ],
-                )
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    ProjectMark(light: true),
-                    SizedBox(width: 32),
-                    Spacer(),
-                    Flexible(child: details),
-                  ],
-                );
-        },
-      ),
-    ),
-  );
-}
-
-class _SimbiosisDigitalLink extends StatelessWidget {
-  const _SimbiosisDigitalLink();
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: () async {
-      await launchUrl(
-        Uri.parse('https://simbiosisdigital.com.ar'),
-        mode: LaunchMode.externalApplication,
-      );
-    },
-    child: Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
-      child: Text(
-        'Desarrollado por SimbiosisDigital',
-        style: TextStyle(color: SitePalette.of(context).muted, fontSize: 12),
-      ),
     ),
   );
 }

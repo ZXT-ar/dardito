@@ -100,8 +100,8 @@ class _PaperTabState extends State<_PaperTab> {
       (SitePalette.of(context).dark ? Color(0xFF51472C) : Color(0xFFE6C68D)),
       (SitePalette.of(context).dark ? Color(0xFF29373C) : Color(0xFFECE2C7)),
     ];
-    return Tooltip(
-      message: remote == null || remote.isEmpty ? door.$3 : remote,
+    return Semantics(
+      hint: remote == null || remote.isEmpty ? door.$3 : remote,
       child: MouseRegion(
         onEnter: (_) => setState(() => _hover = true),
         onExit: (_) => setState(() => _hover = false),

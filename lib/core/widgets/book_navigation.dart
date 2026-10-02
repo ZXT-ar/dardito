@@ -81,7 +81,10 @@ class BookNavigation extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const SiteThemeButton(),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 10),
+                child: SiteThemeButton(),
+              ),
             ],
           ),
         ),
