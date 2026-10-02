@@ -120,6 +120,14 @@ void main() {
       ),
       findsOneWidget,
     );
+    await tester.tap(find.text('MENÚ'));
+    await tester.pumpAndSettle();
+    expect(find.text('MENÚ'), findsOneWidget);
+    await tester.tapAt(const Offset(8, 700));
+    await tester.pumpAndSettle();
+    expect(find.text('MENÚ'), findsNothing);
+    await tester.tap(find.byTooltip('Menú'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Cerrar menú'));
     await tester.pumpAndSettle();
     expect(find.text('MENÚ'), findsNothing);

@@ -59,7 +59,7 @@ class HomeExploreInvitation extends StatelessWidget {
                               radius: 20,
                               backgroundColor: AppColors.yellow,
                               child: Icon(
-                                Icons.arrow_forward,
+                                Icons.chevron_right_rounded,
                                 color: AppColors.ink,
                               ),
                             ),
@@ -80,11 +80,12 @@ class HomeExploreInvitation extends StatelessWidget {
                 Widget drawing() {
                   final progress = MediaQuery.disableAnimationsOf(context)
                       ? 1.0
-                      : ((position?.pixels ?? 0) / 300).clamp(0.0, 1.0);
-                  // North to east: the final ray meets the label's centre.
+                      : ((position?.pixels ?? 0) / 220).clamp(0.0, 1.0);
+                  // The raised label and final needle ray share the same bearing.
+                  // Centre y = 249; label centre y = 4 + 24.
                   final targetAngle = math.atan2(
                     labelDistance(bounds.maxWidth),
-                    195,
+                    221,
                   );
                   final angle = progress * targetAngle;
                   return Stack(
@@ -104,7 +105,7 @@ class HomeExploreInvitation extends StatelessWidget {
                           310.0,
                           (bounds.maxWidth - 1192) / 2 + 215,
                         ),
-                        top: 30,
+                        top: 4,
                         height: 48,
                         child: Row(
                           children: [
@@ -114,6 +115,7 @@ class HomeExploreInvitation extends StatelessWidget {
                                 fontFamily: 'Lora',
                                 fontWeight: FontWeight.w700,
                                 fontSize: 27,
+                                height: 1,
                                 color: progress >= .99
                                     ? const Color(0xFF876015)
                                     : AppColors.ink,
@@ -129,11 +131,11 @@ class HomeExploreInvitation extends StatelessWidget {
                                     : null,
                               ),
                             ),
-                            const SizedBox(width: 18),
+                            const SizedBox(width: 10),
                             const Icon(
-                              Icons.arrow_forward,
+                              Icons.chevron_right_rounded,
                               color: Color(0xFF876015),
-                              size: 30,
+                              size: 32,
                             ),
                           ],
                         ),
@@ -178,9 +180,9 @@ class _CompassPainter extends CustomPainter {
     final c = size.center(Offset.zero);
     final r = size.width / 2 - 9;
     final line = Paint()
-      ..color = const Color(0xFF94866B)
+      ..color = const Color(0xFF746349)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
+      ..strokeWidth = 1.4;
     for (final ratio in [1.0, .965, .80, .69]) {
       canvas.drawCircle(c, r * ratio, line);
     }
@@ -217,7 +219,7 @@ class _CompassPainter extends CustomPainter {
           ..lineTo(0, 20)
           ..lineTo(-14, 0)
           ..close(),
-        Paint()..color = const Color(0xFF6F7567),
+        Paint()..color = const Color(0xFF535D49),
       );
       canvas.restore();
     }
@@ -233,7 +235,7 @@ class _CompassPainter extends CustomPainter {
           style: const TextStyle(
             fontFamily: 'Lora',
             fontSize: 25,
-            color: Color(0xFF665C48),
+            color: Color(0xFF58472F),
           ),
         ),
         textDirection: TextDirection.ltr,

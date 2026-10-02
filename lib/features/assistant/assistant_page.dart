@@ -624,146 +624,162 @@ class _ChatNavigationOverlay extends StatelessWidget {
         color: ReadingPalette.of(context).dark
             ? const Color(0xB3101C23)
             : const Color(0xFF8B6800).withValues(alpha: .34),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 88, 16, 18),
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 430),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: ReadingPalette.of(
-                      context,
-                    ).paper.withValues(alpha: .98),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: ReadingPalette.of(context).line,
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.ink.withValues(alpha: .25),
-                        blurRadius: 40,
-                        offset: const Offset(0, 18),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 4, 2, 10),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                color: AppColors.yellow,
-                                borderRadius: BorderRadius.circular(11),
-                              ),
-                              child: const Icon(
-                                Icons.menu_book_rounded,
-                                size: 19,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'MENÚ',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      letterSpacing: 1.1,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                  Text(
-                                    '¿A dónde querés ir?',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: ReadingPalette.of(context).muted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              tooltip: 'Cerrar menú',
-                              onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                          ],
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          excludeFromSemantics: true,
+          onTap: () => Navigator.of(context).pop(),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 88, 16, 18),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 430),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    excludeFromSemantics: true,
+                    onTap: () {},
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: ReadingPalette.of(
+                          context,
+                        ).paper.withValues(alpha: .98),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: ReadingPalette.of(context).line,
+                          width: 1.5,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.ink.withValues(alpha: .25),
+                            blurRadius: 40,
+                            offset: const Offset(0, 18),
+                          ),
+                        ],
                       ),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 8,
-                              crossAxisSpacing: 8,
-                              childAspectRatio: 1.6,
-                            ),
-                        itemCount: _labels.length,
-                        itemBuilder: (context, index) => Semantics(
-                          button: true,
-                          selected: index == 2,
-                          label: _labels[index],
-                          child: InkWell(
-                            onTap: () => _select(context, index),
-                            borderRadius: BorderRadius.circular(19),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: index == 2
-                                    ? AppColors.yellow
-                                    : ReadingPalette.of(context).inset,
-                                borderRadius: BorderRadius.circular(19),
-                                border: Border.all(
-                                  color: index == 2
-                                      ? AppColors.yellow
-                                      : ReadingPalette.of(context).line,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 4, 2, 10),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.yellow,
+                                    borderRadius: BorderRadius.circular(11),
+                                  ),
+                                  child: const Icon(
+                                    Icons.menu_book_rounded,
+                                    size: 19,
+                                    color: AppColors.ink,
+                                  ),
                                 ),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      _icons[index],
-                                      size: 24,
-                                      color: index == 2
-                                          ? AppColors.ink
-                                          : ReadingPalette.of(context).ink,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      _shortLabels[index],
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: index == 2
-                                            ? AppColors.ink
-                                            : ReadingPalette.of(context).ink,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w900,
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'MENÚ',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          letterSpacing: 1.1,
+                                          fontWeight: FontWeight.w900,
+                                        ),
                                       ),
+                                      Text(
+                                        '¿A dónde querés ir?',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: ReadingPalette.of(
+                                            context,
+                                          ).muted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Cerrar menú',
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  icon: const Icon(Icons.close_rounded),
+                                ),
+                              ],
+                            ),
+                          ),
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  mainAxisSpacing: 8,
+                                  crossAxisSpacing: 8,
+                                  childAspectRatio: 1.6,
+                                ),
+                            itemCount: _labels.length,
+                            itemBuilder: (context, index) => Semantics(
+                              button: true,
+                              selected: index == 2,
+                              label: _labels[index],
+                              child: InkWell(
+                                onTap: () => _select(context, index),
+                                borderRadius: BorderRadius.circular(19),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: index == 2
+                                        ? AppColors.yellow
+                                        : ReadingPalette.of(context).inset,
+                                    borderRadius: BorderRadius.circular(19),
+                                    border: Border.all(
+                                      color: index == 2
+                                          ? AppColors.yellow
+                                          : ReadingPalette.of(context).line,
                                     ),
-                                  ],
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          _icons[index],
+                                          size: 24,
+                                          color: index == 2
+                                              ? AppColors.ink
+                                              : ReadingPalette.of(context).ink,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          _shortLabels[index],
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: index == 2
+                                                ? AppColors.ink
+                                                : ReadingPalette.of(
+                                                    context,
+                                                  ).ink,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),

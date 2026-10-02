@@ -33,17 +33,19 @@ void main() {
       return (painter as dynamic).angle as double;
     }
 
+    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_forward), findsNothing);
     expect(angle(), 0);
     expect(
       tester.widget<Text>(find.text('Explorar el mapa')).style?.color,
       AppColors.ink,
     );
-    controller.jumpTo(150);
+    controller.jumpTo(110);
     await tester.pump();
-    expect(angle(), closeTo(math.atan2(labelDistance(800), 195) / 2, .001));
-    controller.jumpTo(450);
+    expect(angle(), closeTo(math.atan2(labelDistance(800), 221) / 2, .001));
+    controller.jumpTo(220);
     await tester.pump();
-    expect(angle(), closeTo(math.atan2(labelDistance(800), 195), .001));
+    expect(angle(), closeTo(math.atan2(labelDistance(800), 221), .001));
     expect(
       tester.widget<Text>(find.text('Explorar el mapa')).style?.color,
       const Color(0xFF876015),
