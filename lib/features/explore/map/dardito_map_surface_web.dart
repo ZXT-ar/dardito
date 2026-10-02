@@ -233,14 +233,14 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
     // The page tip, rather than its visual center, marks the cluster location.
     final svg =
         '<svg xmlns="http://www.w3.org/2000/svg" width="68" height="78" viewBox="0 0 68 78">'
-        '<path d="M10 4H41L58 21V49L34 73L10 49Z" transform="translate(0 2)" fill="#071217" fill-opacity=".18"/>'
-        '<path d="M10 4H41L58 21V49L34 73L10 49Z" fill="$paper" stroke="$edge" stroke-width="2" stroke-linejoin="round"/>'
-        '<path d="M41 4V21H58" fill="$fold" stroke="$edge" stroke-width="2" stroke-linejoin="round"/>'
+        '<path d="M13 4H40Q41 4 42 5L57 20Q58 21 58 23V47Q58 49 56.5 50.5L36 71Q34 73 32 71L11.5 50.5Q10 49 10 47V7Q10 4 13 4Z" transform="translate(0 2)" fill="#071217" fill-opacity=".18"/>'
+        '<path d="M13 4H40Q41 4 42 5L57 20Q58 21 58 23V47Q58 49 56.5 50.5L36 71Q34 73 32 71L11.5 50.5Q10 49 10 47V7Q10 4 13 4Z" fill="$paper" stroke="$edge" stroke-width="2" stroke-linejoin="round"/>'
+        '<path d="M41 4.5V19Q41 21 43 21H57.5" fill="$fold" stroke="$edge" stroke-width="2" stroke-linejoin="round"/>'
         '<text x="34" y="48" text-anchor="middle" font-family="Georgia,Times New Roman,serif" font-size="$fontSize" font-weight="700" fill="#171913">$count</text></svg>';
     return gmaps.Icon(
       url: 'data:image/svg+xml;charset=UTF-8,${Uri.encodeComponent(svg)}',
-      scaledSize: gmaps.Size(68, 78),
-      anchor: gmaps.Point(34, 73),
+      scaledSize: gmaps.Size(40.8, 46.8),
+      anchor: gmaps.Point(20.4, 43.2),
     );
   }
 
