@@ -8,6 +8,7 @@ import 'dart:ui' as ui;
 import 'package:dardito/core/theme/app_theme.dart';
 import 'package:dardito/features/assistant/assistant_page.dart';
 import 'package:dardito/features/assistant/assistant_response.dart';
+import 'package:dardito/features/assistant/reading_palette.dart';
 import 'package:dardito/features/assistant/response_entities.dart';
 import 'package:dardito/features/assistant/dardito_assistant_service.dart';
 import 'package:flutter/material.dart';
@@ -78,6 +79,53 @@ class _MemorySessionStore extends ChatSessionStore {
 }
 
 void main() {
+  testWidgets('menú compacto hereda el modo oscuro y reduce sus esquinas', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: AssistantPage(
+            stories: const [],
+            onExplore: (_) {},
+            onNavigate: (_) {},
+            assistantService: _Service(answer),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Activar modo oscuro'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Menú'));
+    await tester.pumpAndSettle();
+    expect(find.text('MENÚ'), findsOneWidget);
+    expect(find.text('MENÚ DARDITO'), findsNothing);
+    expect(
+      Theme.of(tester.element(find.text('MENÚ'))).brightness,
+      Brightness.dark,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w is Container &&
+            w.decoration is BoxDecoration &&
+            (w.decoration as BoxDecoration).borderRadius ==
+                BorderRadius.circular(14),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byTooltip('Cerrar menú'));
+    await tester.pumpAndSettle();
+    expect(find.text('MENÚ'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'restaura conversación y borrador por cuenta; sesión nueva no los hereda',
     (tester) async {
@@ -283,6 +331,29 @@ void main() {
       await tester.tap(find.byTooltip('Activar modo oscuro'));
       await tester.pumpAndSettle();
       expect(find.byTooltip('Activar modo claro'), findsOneWidget);
+      final inputContext = tester.element(find.byType(TextField));
+      expect(Theme.of(inputContext).brightness, Brightness.dark);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).decoration?.fillColor,
+        const ReadingPalette(true).paper,
+      );
+      final responseContext = tester.element(
+        find.byType(AssistantResponse).first,
+      );
+      expect(
+        Theme.of(responseContext).textTheme.bodyLarge?.color,
+        const ReadingPalette(true).ink,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Container &&
+              w.decoration is BoxDecoration &&
+              (w.decoration as BoxDecoration).color ==
+                  const ReadingPalette(true).paper,
+        ),
+        findsWidgets,
+      );
 
       for (final question in ['Primera pregunta', 'Segunda pregunta']) {
         await tester.enterText(find.byType(TextField), question);
@@ -449,6 +520,10 @@ void main() {
               ),
             );
             await tester.pumpAndSettle();
+            if (Platform.environment['DARDITO_DARK_CAPTURE'] == '1') {
+              await tester.tap(find.byTooltip('Activar modo oscuro'));
+              await tester.pumpAndSettle();
+            }
             await tester.enterText(
               find.byType(TextField),
               response == answer
@@ -523,7 +598,7 @@ void main() {
                   format: ui.ImageByteFormat.png,
                 );
                 final file = File(
-                  'outputs/chat-biblioteca-clara-20261001/${response == answer
+                  'outputs/chat-${Platform.environment['DARDITO_DARK_CAPTURE'] == '1' ? 'oscuro' : 'claro'}-20261002/${response == answer
                       ? 'estructurado'
                       : response == albertiAnswer
                       ? 'alberti'

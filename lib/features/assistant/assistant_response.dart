@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
+import 'reading_palette.dart';
 import 'response_entities.dart';
 
 /// All headings and highlighted figures are verbatim excerpts of the response.
@@ -19,7 +19,7 @@ class AssistantResponse extends StatelessWidget {
   static String plain(String value) =>
       value.replaceAllMapped(_markup, (m) => m.group(1) ?? m.group(2)!);
 
-  static List<InlineSpan> _entities(String value) {
+  static List<InlineSpan> _entities(String value, ReadingPalette palette) {
     final spans = <InlineSpan>[];
     var cursor = 0;
     for (final e in ResponseEntities.parse(value)) {
@@ -28,21 +28,21 @@ class AssistantResponse extends StatelessWidget {
         TextSpan(
           text: e.text,
           style: switch (e.kind) {
-            ResponseEntityKind.name => const TextStyle(
-              color: AppColors.green,
+            ResponseEntityKind.name => TextStyle(
+              color: palette.green,
               fontWeight: FontWeight.w700,
             ),
-            ResponseEntityKind.date => const TextStyle(
-              color: AppColors.rust,
+            ResponseEntityKind.date => TextStyle(
+              color: palette.rust,
               fontWeight: FontWeight.w800,
             ),
-            ResponseEntityKind.quantity => const TextStyle(
+            ResponseEntityKind.quantity => TextStyle(
               fontWeight: FontWeight.w800,
-              backgroundColor: Color(0xFFF5E8BC),
+              backgroundColor: palette.highlight,
             ),
-            ResponseEntityKind.number => const TextStyle(
+            ResponseEntityKind.number => TextStyle(
               fontWeight: FontWeight.w800,
-              color: AppColors.rust,
+              color: palette.rust,
             ),
           },
         ),
@@ -53,14 +53,14 @@ class AssistantResponse extends StatelessWidget {
     return spans;
   }
 
-  static List<InlineSpan> _inline(String value) {
+  static List<InlineSpan> _inline(String value, ReadingPalette palette) {
     final spans = <InlineSpan>[];
     var cursor = 0;
     for (final m in _markup.allMatches(value)) {
-      spans.addAll(_entities(value.substring(cursor, m.start)));
+      spans.addAll(_entities(value.substring(cursor, m.start), palette));
       spans.add(
         TextSpan(
-          children: _entities(m.group(1) ?? m.group(2)!),
+          children: _entities(m.group(1) ?? m.group(2)!, palette),
           style: TextStyle(
             fontWeight: m.group(1) != null ? FontWeight.w700 : null,
             fontStyle: m.group(2) != null ? FontStyle.italic : null,
@@ -69,7 +69,7 @@ class AssistantResponse extends StatelessWidget {
       );
       cursor = m.end;
     }
-    spans.addAll(_entities(value.substring(cursor)));
+    spans.addAll(_entities(value.substring(cursor), palette));
     return spans;
   }
 
@@ -142,7 +142,7 @@ class AssistantResponse extends StatelessWidget {
               height: 1.7,
             );
       Widget body = Text.rich(
-        TextSpan(children: _inline(content)),
+        TextSpan(children: _inline(content, ReadingPalette.of(context))),
         style: style,
       );
       if (isHeading) body = Semantics(header: true, child: body);
@@ -158,8 +158,13 @@ class AssistantResponse extends StatelessWidget {
       if (quote) {
         body = Container(
           padding: const EdgeInsets.only(left: 16),
-          decoration: const BoxDecoration(
-            border: Border(left: BorderSide(color: AppColors.green, width: 3)),
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: ReadingPalette.of(context).green,
+                width: 3,
+              ),
+            ),
           ),
           child: body,
         );
@@ -215,8 +220,10 @@ class AssistantResponse extends StatelessWidget {
                 Container(
                   width: 128,
                   padding: const EdgeInsets.only(left: 22),
-                  decoration: const BoxDecoration(
-                    border: Border(left: BorderSide(color: AppColors.line)),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(color: ReadingPalette.of(context).line),
+                    ),
                   ),
                   child: _Figures(figures: figures, vertical: true),
                 ),
@@ -227,9 +234,12 @@ class AssistantResponse extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               prose,
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 26, bottom: 20),
-                child: Divider(height: 1, color: AppColors.line),
+                child: Divider(
+                  height: 1,
+                  color: ReadingPalette.of(context).line,
+                ),
               ),
               _Figures(figures: figures, vertical: false),
             ],
@@ -253,11 +263,11 @@ class _Figures extends StatelessWidget {
     final suffix = isDate
         ? figure.text.substring(valueIndex + figure.value!.length).trim()
         : figure.caption!;
-    const labelStyle = TextStyle(
+    final labelStyle = TextStyle(
       fontFamily: 'Lora',
       fontSize: 12,
       height: 1.45,
-      color: AppColors.muted,
+      color: ReadingPalette.of(context).muted,
     );
     return Semantics(
       label: figure.text,
@@ -279,19 +289,19 @@ class _Figures extends StatelessWidget {
               fontWeight: FontWeight.w500,
               height: 1.1,
               color: figure.kind == ResponseEntityKind.date
-                  ? AppColors.rust
-                  : AppColors.ink,
+                  ? ReadingPalette.of(context).rust
+                  : ReadingPalette.of(context).ink,
             ),
           ),
           if (suffix.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
               suffix,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Lora',
                 fontSize: 12,
                 height: 1.45,
-                color: AppColors.muted,
+                color: ReadingPalette.of(context).muted,
               ),
             ),
           ],
@@ -308,9 +318,12 @@ class _Figures extends StatelessWidget {
         children: [
           for (var i = 0; i < figures.length; i++) ...[
             if (i > 0)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: 22),
-                child: Divider(height: 1, color: AppColors.line),
+                child: Divider(
+                  height: 1,
+                  color: ReadingPalette.of(context).line,
+                ),
               ),
             _figure(context, figures[i]),
           ],

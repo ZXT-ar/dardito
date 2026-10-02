@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import 'reading_palette.dart';
 
 /// A book plate sized from the actual photograph, with no letterboxed canvas.
 class StoryPlate extends StatefulWidget {
@@ -92,7 +93,7 @@ class _StoryPlateState extends State<StoryPlate> {
         final width = math.min(maxWidth, photoHeight * _ratio!);
         return Dialog(
           insetPadding: const EdgeInsets.all(16),
-          backgroundColor: AppColors.paper,
+          backgroundColor: ReadingPalette.of(context).paper,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(3)),
           ),
@@ -109,17 +110,17 @@ class _StoryPlateState extends State<StoryPlate> {
                         Expanded(
                           child: Text(
                             _folio,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
                               letterSpacing: 1.8,
-                              color: AppColors.muted,
+                              color: ReadingPalette.of(context).muted,
                             ),
                           ),
                         ),
                         IconButton(
                           tooltip: 'Cerrar imagen',
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.close, size: 20),
+                          icon: Icon(Icons.close, size: 20),
                         ),
                       ],
                     ),
@@ -135,7 +136,7 @@ class _StoryPlateState extends State<StoryPlate> {
                     Text(
                       _title,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lora',
                         fontSize: 16,
                         height: 1.4,
@@ -170,8 +171,8 @@ class _StoryPlateState extends State<StoryPlate> {
             child: Container(
               width: width + 26,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFDF8),
-                border: Border.all(color: AppColors.line),
+                color: ReadingPalette.of(context).plate,
+                border: Border.all(color: ReadingPalette.of(context).line),
                 boxShadow: const [
                   BoxShadow(
                     color: Color(0x19604D29),
@@ -199,29 +200,29 @@ class _StoryPlateState extends State<StoryPlate> {
                               Expanded(
                                 child: Text(
                                   _folio,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 9,
                                     letterSpacing: 1.6,
-                                    color: AppColors.muted,
+                                    color: ReadingPalette.of(context).muted,
                                   ),
                                 ),
                               ),
-                              const Icon(
+                              Icon(
                                 Icons.open_in_full,
                                 size: 14,
-                                color: AppColors.muted,
+                                color: ReadingPalette.of(context).muted,
                               ),
                             ],
                           ),
                           const SizedBox(height: 6),
                           Text(
                             _title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Lora',
                               fontSize: 14,
                               height: 1.4,
                               fontStyle: FontStyle.italic,
-                              color: AppColors.ink,
+                              color: ReadingPalette.of(context).ink,
                             ),
                           ),
                         ],

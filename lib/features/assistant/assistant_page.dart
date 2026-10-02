@@ -15,17 +15,7 @@ import 'assistant_response.dart';
 import 'story_image_service.dart';
 import 'story_plate.dart';
 import 'chat_session_store.dart';
-
-// The reading surface has its own palette; the rest of the app stays independent.
-class _ReadingPalette {
-  const _ReadingPalette(this.dark);
-  final bool dark;
-  Color get canvas => dark ? AppColors.navy : const Color(0xFFEDE7DA);
-  Color get ink => dark ? AppColors.paper : AppColors.ink;
-  Color get muted => dark ? const Color(0xFFB6BDBD) : AppColors.muted;
-  Color get line => dark ? const Color(0xFF40505A) : const Color(0xFFC9C0AE);
-  Color get inset => dark ? const Color(0xFF152A38) : const Color(0xFFE3DCCB);
-}
+import 'reading_palette.dart';
 
 const _assistantGreetings = [
   '¡Hola! Soy Dardito.\n'
@@ -101,7 +91,7 @@ class _AssistantPageState extends State<AssistantPage> {
   bool _typing = false;
   bool _hasReply = false;
   bool _dark = false;
-  _ReadingPalette get _palette => _ReadingPalette(_dark);
+  ReadingPalette get _palette => ReadingPalette(_dark);
   final Map<_Message, GlobalKey> _messageKeys = {};
 
   void _showMessage(_Message message) {
@@ -348,106 +338,118 @@ class _AssistantPageState extends State<AssistantPage> {
     final wide =
         MediaQuery.sizeOf(context).width >= 1180 &&
         MediaQuery.textScalerOf(context).scale(1) < 1.4;
-    return ColoredBox(
-      color: _palette.canvas,
-      child: SafeArea(
-        bottom: false,
-        child: MaxWidth(
-          padding: EdgeInsets.zero,
-          child: Column(
-            children: [
-              _ChatHeader(
-                onNavigate: widget.onNavigate,
-                palette: _palette,
-                onToggleMode: () => setState(() => _dark = !_dark),
-              ),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (wide && _hasReply)
-                      SizedBox(
-                        width: 190,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 32, right: 16),
-                          child: SingleChildScrollView(child: _history()),
-                        ),
-                      ),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: SingleChildScrollView(
-                              key: const ValueKey('chat-scroll'),
-                              controller: _scroll,
-                              padding: EdgeInsets.fromLTRB(
-                                wide ? 32 : 16,
-                                28,
-                                wide ? 32 : 16,
-                                32,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  for (var i = 0; i < _messages.length; i++)
-                                    KeyedSubtree(
-                                      key: _messageKeys.putIfAbsent(
-                                        _messages[i],
-                                        () => GlobalKey(),
-                                      ),
-                                      child: _MessageBubble(
-                                        message: _messages[i],
-                                        palette: _palette,
-                                        pageNumber: _messages
-                                            .take(i + 1)
-                                            .where((m) => m.fromDardito)
-                                            .length,
-                                        onMap: () => widget.onExplore(
-                                          _messages[i].story,
-                                        ),
-                                      ),
-                                    ),
-                                  if (_typing) _TypingBubble(palette: _palette),
-                                ],
-                              ),
-                            ),
+    return Theme(
+      data: _palette.theme(Theme.of(context)),
+      child: ColoredBox(
+        color: _palette.canvas,
+        child: SafeArea(
+          bottom: false,
+          child: MaxWidth(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                _ChatHeader(
+                  onNavigate: widget.onNavigate,
+                  palette: _palette,
+                  onToggleMode: () => setState(() => _dark = !_dark),
+                ),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (wide && _hasReply)
+                        SizedBox(
+                          width: 190,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 32, right: 16),
+                            child: SingleChildScrollView(child: _history()),
                           ),
-                          if (_messages.length == 1)
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                              child: Row(
-                                children: [
-                                  for (final suggestion in suggestions)
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 8),
-                                      child: OutlinedButton(
-                                        onPressed: () => _send(suggestion),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: _palette.ink,
-                                          side: BorderSide(
-                                            color: _palette.line,
+                        ),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: SingleChildScrollView(
+                                key: const ValueKey('chat-scroll'),
+                                controller: _scroll,
+                                padding: EdgeInsets.fromLTRB(
+                                  wide ? 32 : 16,
+                                  28,
+                                  wide ? 32 : 16,
+                                  32,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    for (var i = 0; i < _messages.length; i++)
+                                      KeyedSubtree(
+                                        key: _messageKeys.putIfAbsent(
+                                          _messages[i],
+                                          () => GlobalKey(),
+                                        ),
+                                        child: _MessageBubble(
+                                          message: _messages[i],
+                                          palette: _palette,
+                                          pageNumber: _messages
+                                              .take(i + 1)
+                                              .where((m) => m.fromDardito)
+                                              .length,
+                                          onMap: () => widget.onExplore(
+                                            _messages[i].story,
                                           ),
                                         ),
-                                        child: Text(suggestion),
                                       ),
-                                    ),
-                                ],
+                                    if (_typing)
+                                      _TypingBubble(palette: _palette),
+                                  ],
+                                ),
                               ),
                             ),
-                          _Composer(
-                            controller: _controller,
-                            enabled: !_typing,
-                            onSend: _send,
-                            palette: _palette,
-                          ),
-                        ],
+                            if (_messages.length == 1)
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  12,
+                                ),
+                                child: Row(
+                                  children: [
+                                    for (final suggestion in suggestions)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 8,
+                                        ),
+                                        child: OutlinedButton(
+                                          onPressed: () => _send(suggestion),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: _palette.ink,
+                                            side: BorderSide(
+                                              color: _palette.line,
+                                            ),
+                                          ),
+                                          child: Text(suggestion),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            _Composer(
+                              controller: _controller,
+                              enabled: !_typing,
+                              onSend: _send,
+                              palette: _palette,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -461,7 +463,7 @@ class _ChatHeader extends StatelessWidget {
     required this.palette,
     required this.onToggleMode,
   });
-  final _ReadingPalette palette;
+  final ReadingPalette palette;
   final VoidCallback onToggleMode;
   final ValueChanged<int> onNavigate;
 
@@ -471,8 +473,10 @@ class _ChatHeader extends StatelessWidget {
     barrierLabel: 'Cerrar menú de navegación',
     barrierColor: Colors.transparent,
     transitionDuration: const Duration(milliseconds: 320),
-    pageBuilder: (context, animation, secondaryAnimation) =>
-        _ChatNavigationOverlay(onNavigate: onNavigate),
+    pageBuilder: (context, animation, secondaryAnimation) => Theme(
+      data: palette.theme(Theme.of(context)),
+      child: _ChatNavigationOverlay(onNavigate: onNavigate),
+    ),
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       final curved = CurvedAnimation(
         parent: animation,
@@ -617,7 +621,9 @@ class _ChatNavigationOverlay extends StatelessWidget {
     child: BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 13, sigmaY: 13),
       child: ColoredBox(
-        color: const Color(0xFF8B6800).withValues(alpha: .34),
+        color: ReadingPalette.of(context).dark
+            ? const Color(0xB3101C23)
+            : const Color(0xFF8B6800).withValues(alpha: .34),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 88, 16, 18),
@@ -628,9 +634,14 @@ class _ChatNavigationOverlay extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.paper.withValues(alpha: .96),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: Colors.white, width: 1.5),
+                    color: ReadingPalette.of(
+                      context,
+                    ).paper.withValues(alpha: .98),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: ReadingPalette.of(context).line,
+                      width: 1.5,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: AppColors.ink.withValues(alpha: .25),
@@ -656,15 +667,16 @@ class _ChatNavigationOverlay extends StatelessWidget {
                               child: const Icon(
                                 Icons.menu_book_rounded,
                                 size: 19,
+                                color: AppColors.ink,
                               ),
                             ),
                             const SizedBox(width: 10),
-                            const Expanded(
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'MENÚ DARDITO',
+                                    'MENÚ',
                                     style: TextStyle(
                                       fontSize: 10,
                                       letterSpacing: 1.1,
@@ -675,7 +687,7 @@ class _ChatNavigationOverlay extends StatelessWidget {
                                     '¿A dónde querés ir?',
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: AppColors.muted,
+                                      color: ReadingPalette.of(context).muted,
                                     ),
                                   ),
                                 ],
@@ -707,16 +719,16 @@ class _ChatNavigationOverlay extends StatelessWidget {
                           child: InkWell(
                             onTap: () => _select(context, index),
                             borderRadius: BorderRadius.circular(19),
-                            child: Ink(
+                            child: Container(
                               decoration: BoxDecoration(
                                 color: index == 2
                                     ? AppColors.yellow
-                                    : AppColors.cream,
+                                    : ReadingPalette.of(context).inset,
                                 borderRadius: BorderRadius.circular(19),
                                 border: Border.all(
                                   color: index == 2
                                       ? AppColors.yellow
-                                      : AppColors.line,
+                                      : ReadingPalette.of(context).line,
                                 ),
                               ),
                               child: Padding(
@@ -724,13 +736,22 @@ class _ChatNavigationOverlay extends StatelessWidget {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(_icons[index], size: 24),
+                                    Icon(
+                                      _icons[index],
+                                      size: 24,
+                                      color: index == 2
+                                          ? AppColors.ink
+                                          : ReadingPalette.of(context).ink,
+                                    ),
                                     const SizedBox(height: 6),
                                     Text(
                                       _shortLabels[index],
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
+                                      style: TextStyle(
+                                        color: index == 2
+                                            ? AppColors.ink
+                                            : ReadingPalette.of(context).ink,
                                         fontSize: 12,
                                         fontWeight: FontWeight.w900,
                                       ),
@@ -764,7 +785,7 @@ class _MessageBubble extends StatelessWidget {
   final _Message message;
   final VoidCallback onMap;
   final int pageNumber;
-  final _ReadingPalette palette;
+  final ReadingPalette palette;
 
   @override
   Widget build(BuildContext context) {
@@ -812,7 +833,9 @@ class _MessageBubble extends StatelessWidget {
         message.moderationAction == 'red' ||
         message.moderationAction == 'blocked';
     final normal = !warning && !blocked;
-    final color = blocked ? const Color(0xFFC62828) : const Color(0xFF8B6800);
+    final color = blocked
+        ? (palette.dark ? const Color(0xFFFFA397) : const Color(0xFFC62828))
+        : (palette.dark ? const Color(0xFFE9CA79) : const Color(0xFF8B6800));
     return Padding(
       padding: const EdgeInsets.only(bottom: 28, right: 6),
       child: Stack(
@@ -826,7 +849,7 @@ class _MessageBubble extends StatelessWidget {
               bottom: -7,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD0C4AA),
+                  color: palette.edge,
                   borderRadius: BorderRadius.circular(6),
                 ),
               ),
@@ -838,8 +861,8 @@ class _MessageBubble extends StatelessWidget {
               bottom: -3,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8DDC8),
-                  border: Border.all(color: const Color(0xFFB5A88E)),
+                  color: palette.leaf,
+                  border: Border.all(color: palette.line),
                   borderRadius: BorderRadius.circular(6),
                 ),
               ),
@@ -854,9 +877,9 @@ class _MessageBubble extends StatelessWidget {
               24,
             ),
             decoration: BoxDecoration(
-              color: AppColors.paper,
+              color: palette.paper,
               border: Border.all(
-                color: normal ? AppColors.line : color,
+                color: normal ? palette.line : color,
                 width: normal ? 1 : 2,
               ),
               borderRadius: BorderRadius.circular(6),
@@ -878,29 +901,26 @@ class _MessageBubble extends StatelessWidget {
                     padding: const EdgeInsets.only(right: 32),
                     child: Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'DARDITO',
                             style: TextStyle(
                               fontSize: 9,
                               letterSpacing: 2,
-                              color: AppColors.muted,
+                              color: palette.muted,
                             ),
                           ),
                         ),
                         Text(
                           pageNumber.toString().padLeft(2, '0'),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: AppColors.muted,
-                          ),
+                          style: TextStyle(fontSize: 10, color: palette.muted),
                         ),
                       ],
                     ),
                   ),
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 12, bottom: 24),
-                    child: Divider(height: 1, color: AppColors.line),
+                    child: Divider(height: 1, color: palette.line),
                   ),
                   if (message.images == null)
                     AssistantResponse(text: message.text)
@@ -936,32 +956,32 @@ class _MessageBubble extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     message.text,
-                    style: const TextStyle(fontSize: 16, height: 1.6),
+                    style: TextStyle(fontSize: 16, height: 1.6),
                   ),
                 ],
                 if (normal) ...[
                   const SizedBox(height: 24),
-                  const Divider(height: 1, color: AppColors.line),
+                  Divider(height: 1, color: palette.line),
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           'Hoja ${pageNumber.toString().padLeft(2, '0')}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Lora',
                             fontSize: 12,
                             fontStyle: FontStyle.italic,
-                            color: AppColors.muted,
+                            color: palette.muted,
                           ),
                         ),
                       ),
                       IconButton(
                         tooltip: 'Copiar respuesta',
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.copy_outlined,
                           size: 17,
-                          color: AppColors.muted,
+                          color: palette.muted,
                         ),
                         onPressed: () async {
                           await Clipboard.setData(
@@ -982,10 +1002,10 @@ class _MessageBubble extends StatelessWidget {
                 ],
                 if (message.story != null) ...[
                   const SizedBox(height: 22),
-                  const Divider(color: AppColors.line),
+                  Divider(color: palette.line),
                   TextButton.icon(
                     onPressed: onMap,
-                    icon: const Icon(Icons.location_on_outlined, size: 18),
+                    icon: Icon(Icons.location_on_outlined, size: 18),
                     label: const Text('Ver en el mapa'),
                   ),
                 ],
@@ -1020,7 +1040,7 @@ class _MessageBubble extends StatelessWidget {
 
 class _TypingBubble extends StatelessWidget {
   const _TypingBubble({required this.palette});
-  final _ReadingPalette palette;
+  final ReadingPalette palette;
   @override
   Widget build(BuildContext context) => Align(
     alignment: Alignment.centerLeft,
@@ -1086,7 +1106,7 @@ class _Composer extends StatelessWidget {
   final TextEditingController controller;
   final bool enabled;
   final VoidCallback onSend;
-  final _ReadingPalette palette;
+  final ReadingPalette palette;
   @override
   Widget build(BuildContext context) => SafeArea(
     top: false,
@@ -1160,7 +1180,7 @@ class _Composer extends StatelessWidget {
                               (value.text.characters.length >= 300 ? 28 : 0),
                         ),
                         hintText: 'Preguntale a Dardito…',
-                        fillColor: AppColors.paper,
+                        fillColor: palette.paper,
                         counterText: value.text.characters.length >= 300
                             ? '${value.text.characters.length}/350'
                             : '',
