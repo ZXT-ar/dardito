@@ -214,20 +214,33 @@ class _DarditoMapSurfaceState extends State<DarditoMapSurface> {
   }
 
   gmaps.Icon _clusterIcon(int count, bool selected) {
+    final paper = selected
+        ? '#F4C542'
+        : widget.lightTheme
+        ? '#FFFBF2'
+        : '#B9C795';
+    final edge = widget.lightTheme ? '#536044' : '#D5DDB5';
+    final fold = selected
+        ? '#D3A32C'
+        : widget.lightTheme
+        ? '#D8C9A3'
+        : '#7D8D5C';
+    final fontSize = count >= 1000
+        ? 19
+        : count >= 100
+        ? 23
+        : 28;
+    // The page tip, rather than its visual center, marks the cluster location.
     final svg =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="68" height="68" viewBox="0 0 68 68">'
-        '<circle cx="34" cy="34" r="32" fill="#102937" fill-opacity=".25"/>'
-        '<circle cx="34" cy="32" r="27" fill="${selected
-            ? '#F4C542'
-            : widget.lightTheme
-            ? '#F7EFDA'
-            : '#29373C'}" stroke="${widget.lightTheme ? '#647447' : '#B9C795'}" stroke-width="5"/>'
-        '<circle cx="55" cy="12" r="6" fill="#F4C542"/>'
-        '<text x="34" y="39" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="${widget.lightTheme ? '#171815' : '#F0E6D2'}">$count</text></svg>';
+        '<svg xmlns="http://www.w3.org/2000/svg" width="68" height="78" viewBox="0 0 68 78">'
+        '<path d="M10 4H41L58 21V49L34 73L10 49Z" transform="translate(0 2)" fill="#071217" fill-opacity=".18"/>'
+        '<path d="M10 4H41L58 21V49L34 73L10 49Z" fill="$paper" stroke="$edge" stroke-width="2" stroke-linejoin="round"/>'
+        '<path d="M41 4V21H58" fill="$fold" stroke="$edge" stroke-width="2" stroke-linejoin="round"/>'
+        '<text x="34" y="48" text-anchor="middle" font-family="Georgia,Times New Roman,serif" font-size="$fontSize" font-weight="700" fill="#171913">$count</text></svg>';
     return gmaps.Icon(
       url: 'data:image/svg+xml;charset=UTF-8,${Uri.encodeComponent(svg)}',
-      scaledSize: gmaps.Size(68, 68),
-      anchor: gmaps.Point(34, 34),
+      scaledSize: gmaps.Size(68, 78),
+      anchor: gmaps.Point(34, 73),
     );
   }
 
