@@ -8,6 +8,7 @@ import 'core/analytics/site_measurement.dart';
 import 'core/platform/browser_location.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/ui.dart';
+import 'core/widgets/book_navigation.dart';
 import 'data/models/story.dart';
 import 'data/repositories/story_repository.dart';
 import 'data/repositories/catalog_repository.dart';
@@ -531,6 +532,7 @@ class DarditoShell extends StatefulWidget {
 
 class _DarditoShellState extends State<DarditoShell> {
   bool _navVisible = true;
+  double _homeOffset = 0;
   int get currentIndex => widget.currentIndex;
   ValueChanged<int> get onNavigate => widget.onNavigate;
   Widget get child => widget.child;
@@ -538,7 +540,10 @@ class _DarditoShellState extends State<DarditoShell> {
   @override
   void didUpdateWidget(covariant DarditoShell oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.currentIndex != widget.currentIndex) _navVisible = true;
+    if (oldWidget.currentIndex != widget.currentIndex) {
+      _navVisible = true;
+      _homeOffset = 0;
+    }
   }
 
   bool _trackScroll(ScrollUpdateNotification event) {
@@ -551,7 +556,14 @@ class _DarditoShellState extends State<DarditoShell> {
         : delta > .5
         ? false
         : _navVisible;
-    if (visible != _navVisible) setState(() => _navVisible = visible);
+    final homeOffset = event.metrics.pixels.clamp(0.0, 110.0);
+    if (visible != _navVisible ||
+        (currentIndex == 0 && homeOffset != _homeOffset)) {
+      setState(() {
+        _navVisible = visible;
+        _homeOffset = homeOffset;
+      });
+    }
     return false;
   }
 
@@ -614,7 +626,41 @@ class _DarditoShellState extends State<DarditoShell> {
                   ),
                 ),
               )
-            else if (!mobile && currentIndex != 2)
+            else if (!mobile && currentIndex == 0) ...[
+              if (_homeOffset < 90)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 14 - _homeOffset,
+                  child: SafeArea(
+                    bottom: false,
+                    child: MaxWidth(
+                      child: BookNavigation(
+                        key: const ValueKey('map-desktop-nav'),
+                        onNavigate: onNavigate,
+                      ),
+                    ),
+                  ),
+                ),
+              if (_homeOffset >= 90)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 14,
+                  child: SafeArea(
+                    bottom: false,
+                    child: _movingNav(
+                      MaxWidth(
+                        child: BookNavigation(
+                          key: const ValueKey('spine-desktop-nav'),
+                          spine: true,
+                          onNavigate: onNavigate,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ] else if (!mobile && currentIndex != 2)
               Positioned(
                 left: 0,
                 right: 0,
@@ -623,14 +669,10 @@ class _DarditoShellState extends State<DarditoShell> {
                   bottom: false,
                   child: _movingNav(
                     MaxWidth(
-                      child:
-                          const bool.fromEnvironment('DARDITO_REFINED_HOME') &&
-                              currentIndex == 0
-                          ? _RefinedDesktopNav(onNavigate: onNavigate)
-                          : _DesktopNav(
-                              currentIndex: currentIndex,
-                              onNavigate: onNavigate,
-                            ),
+                      child: _DesktopNav(
+                        currentIndex: currentIndex,
+                        onNavigate: onNavigate,
+                      ),
                     ),
                   ),
                 ),
@@ -1080,77 +1122,6 @@ class _OAuthButton extends StatelessWidget {
             )
           : Icon(icon, size: 25),
       label: Text(label),
-    ),
-  );
-}
-
-/// Cabecera de la vista previa; la navegación habitual permanece intacta.
-class _RefinedDesktopNav extends StatelessWidget {
-  const _RefinedDesktopNav({required this.onNavigate});
-  final ValueChanged<int> onNavigate;
-  @override
-  Widget build(BuildContext context) => Container(
-    height: 68,
-    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-    decoration: BoxDecoration(
-      color: AppColors.cream,
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: AppColors.line),
-    ),
-    child: Row(
-      children: [
-        InkWell(
-          onTap: () => onNavigate(0),
-          child: Image.asset(
-            'assets/brand/mhdlp_logo_horizontal.jpg',
-            width: 144,
-            height: 44,
-            fit: BoxFit.contain,
-          ),
-        ),
-        const Spacer(),
-        for (var index = 0; index < 3; index++)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-            child: InkWell(
-              onTap: () => onNavigate(index),
-              child: Container(
-                alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 2,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: index == 0 ? AppColors.rust : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                child: Text(
-                  DarditoShell.labels[index],
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: index == 0 ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        const SizedBox(width: 12),
-        FilledButton.icon(
-          onPressed: () => onNavigate(3),
-          style: FilledButton.styleFrom(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(7),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 16),
-          ),
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('Compartí tu historia'),
-        ),
-      ],
     ),
   );
 }
