@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'dardito_details.dart';
 
 class SectionEyebrow extends StatelessWidget {
   const SectionEyebrow(this.text, {super.key, this.light = false});
@@ -13,14 +14,7 @@ class SectionEyebrow extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Container(
-        width: 26,
-        height: 3,
-        decoration: BoxDecoration(
-          color: AppColors.yellow,
-          borderRadius: BorderRadius.circular(3),
-        ),
-      ),
+      const DarditoDetail(size: 23),
       const SizedBox(width: 10),
       Flexible(
         child: Text(
@@ -190,34 +184,57 @@ class HoverLift extends StatefulWidget {
 
 class _HoverLiftState extends State<HoverLift> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
-  Widget build(BuildContext context) => MouseRegion(
-    onEnter: (_) => setState(() => _hovered = true),
-    onExit: (_) => setState(() => _hovered = false),
-    child: AnimatedScale(
-      scale: _hovered ? widget.scale : 1,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      child: AnimatedSlide(
-        offset: Offset(0, _hovered ? -widget.distance / 100 : 0),
+  Widget build(BuildContext context) => Focus(
+    canRequestFocus: false,
+    onFocusChange: (value) => setState(() => _focused = value),
+    child: MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedScale(
+        scale: (_hovered || _focused) ? widget.scale : 1,
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: _hovered
-                ? [
-                    BoxShadow(
-                      color: AppColors.ink.withValues(alpha: .13),
-                      blurRadius: 28,
-                      offset: const Offset(0, 14),
-                    ),
-                  ]
-                : const [],
+        child: AnimatedSlide(
+          offset: Offset(
+            0,
+            (_hovered || _focused) ? -widget.distance / 100 : 0,
           ),
-          child: widget.child,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: (_hovered || _focused)
+                  ? [
+                      BoxShadow(
+                        color: AppColors.ink.withValues(alpha: .13),
+                        blurRadius: 28,
+                        offset: const Offset(0, 14),
+                      ),
+                    ]
+                  : const [],
+            ),
+            child: Stack(
+              children: [
+                widget.child,
+                Positioned(
+                  top: 6,
+                  right: 16,
+                  child: AnimatedOpacity(
+                    opacity: (_hovered || _focused) ? 1 : 0,
+                    duration: MediaQuery.disableAnimationsOf(context)
+                        ? Duration.zero
+                        : const Duration(milliseconds: 180),
+                    child: const DarditoDetail(ribbon: true, size: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     ),

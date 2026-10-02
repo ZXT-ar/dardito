@@ -634,7 +634,10 @@ class _DarditoShellState extends State<DarditoShell> {
                   top: 14 - _homeOffset,
                   child: SafeArea(
                     bottom: false,
-                    child: MaxWidth(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: MediaQuery.sizeOf(context).width * .035,
+                      ),
                       child: BookNavigation(
                         key: const ValueKey('map-desktop-nav'),
                         onNavigate: onNavigate,
@@ -650,7 +653,10 @@ class _DarditoShellState extends State<DarditoShell> {
                   child: SafeArea(
                     bottom: false,
                     child: _movingNav(
-                      MaxWidth(
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: MediaQuery.sizeOf(context).width * .035,
+                        ),
                         child: BookNavigation(
                           key: const ValueKey('spine-desktop-nav'),
                           spine: true,

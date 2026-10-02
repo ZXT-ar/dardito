@@ -96,8 +96,22 @@ class HomeExploreInvitation extends StatelessWidget {
                         bottom: -169,
                         width: 520,
                         height: 520,
-                        child: CustomPaint(
-                          painter: _CompassPainter(angle: angle),
+                        child: ShaderMask(
+                          blendMode: BlendMode.dstIn,
+                          shaderCallback: (bounds) => const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            stops: [0, .48, .675, 1],
+                            colors: [
+                              Colors.white,
+                              Colors.white,
+                              Colors.transparent,
+                              Colors.transparent,
+                            ],
+                          ).createShader(bounds),
+                          child: CustomPaint(
+                            painter: _CompassPainter(angle: angle),
+                          ),
                         ),
                       ),
                       Positioned(

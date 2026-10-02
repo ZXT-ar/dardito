@@ -5,7 +5,7 @@
 // reutilizando un main.dart.js incompatible después de un despliegue.
 for (const build of _flutter.buildConfig.builds) {
   if (build.mainJsPath === 'main.dart.js') {
-    build.mainJsPath = 'main.dart.js?v=20261002-navbar-libro-v12';
+    build.mainJsPath = 'main.dart.js?v=20261002-detalles-dardito-v13';
   }
 }
 

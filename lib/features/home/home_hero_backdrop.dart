@@ -54,11 +54,11 @@ class HomeHeroBackdrop extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        stops: [0, .42, 1],
+                        stops: [0, .48, 1],
                         colors: [
                           Color(0x30F7EFDA),
                           Color(0x00F7EFDA),
-                          Color(0x70F7EFDA),
+                          Color(0xFFF7EFDA),
                         ],
                       ),
                     ),
@@ -78,6 +78,25 @@ class HomeHeroBackdrop extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ),
+        const Positioned.fill(
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0, .55, .94, 1],
+                  colors: [
+                    Color(0x00F7EFDA),
+                    Color(0x00F7EFDA),
+                    AppColors.heroPaper,
+                    AppColors.heroPaper,
+                  ],
+                ),
               ),
             ),
           ),

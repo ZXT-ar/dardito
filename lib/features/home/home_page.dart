@@ -15,6 +15,7 @@ import '../explore/map/dardito_map_surface.dart';
 import '../legal/legal_page.dart';
 import '../story/story_widgets.dart';
 import 'home_page_refined.dart' show RefinedHomeHero;
+import 'home_hero_backdrop.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({
@@ -37,21 +38,32 @@ class HomePage extends StatelessWidget {
     child: SingleChildScrollView(
       child: Column(
         children: [
-          if (const bool.fromEnvironment('DARDITO_REFINED_HERO'))
-            RefinedHomeHero(
-              onExplore: () => onExplore(null),
-              onAsk: () => onNavigate(2),
-            )
-          else
-            _Hero(onExplore: () => onExplore(null), onAsk: () => onNavigate(2)),
-          const SizedBox(height: 72),
-          Entrance(
-            delay: const Duration(milliseconds: 80),
-            child: MaxWidth(
-              child: _MapCallout(
-                stories: stories,
-                onExplore: () => onExplore(null),
-              ),
+          HomeHeroBackdrop(
+            child: Column(
+              children: [
+                if (const bool.fromEnvironment('DARDITO_REFINED_HERO'))
+                  RefinedHomeHero(
+                    withBackdrop: false,
+                    onExplore: () => onExplore(null),
+                    onAsk: () => onNavigate(2),
+                  )
+                else
+                  _Hero(
+                    onExplore: () => onExplore(null),
+                    onAsk: () => onNavigate(2),
+                  ),
+                const SizedBox(height: 72),
+                Entrance(
+                  delay: const Duration(milliseconds: 80),
+                  child: MaxWidth(
+                    child: _MapCallout(
+                      stories: stories,
+                      onExplore: () => onExplore(null),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 48),
+              ],
             ),
           ),
           const SizedBox(height: 96),
@@ -568,7 +580,7 @@ class _MapCalloutState extends State<_MapCallout> {
     borderRadius: BorderRadius.circular(30),
     child: Container(
       padding: const EdgeInsets.all(8),
-      color: AppColors.heroPaper,
+      color: Colors.transparent,
       child: LayoutBuilder(
         builder: (context, c) {
           final narrow = c.maxWidth < 800;

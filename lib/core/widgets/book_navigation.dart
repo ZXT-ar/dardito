@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dardito_details.dart';
 
 /// Ink on the opening map; gilt lettering on the returning book spine.
 class BookNavigation extends StatelessWidget {
@@ -24,11 +25,11 @@ class BookNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ink = spine ? const Color(0xFFF0DEAD) : const Color(0xFF463D29);
+    final ink = spine ? const Color(0xFF352918) : const Color(0xFF463D29);
     final content = SizedBox(
       height: 76,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 28),
+        padding: const EdgeInsets.symmetric(horizontal: 22),
         child: LayoutBuilder(
           builder: (context, bounds) => Row(
             children: [
@@ -36,7 +37,10 @@ class BookNavigation extends StatelessWidget {
                 header: true,
                 child: Row(
                   children: [
-                    Icon(Icons.menu_book_outlined, color: ink, size: 30),
+                    if (spine)
+                      const DarditoDetail(clasp: true, size: 34)
+                    else
+                      Icon(Icons.menu_book_outlined, color: ink, size: 30),
                     if (bounds.maxWidth > 960) ...[
                       const SizedBox(width: 12),
                       Text(
@@ -91,10 +95,10 @@ class BookNavigation extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Color(0xFF24382F),
-                    Color(0xFF435345),
-                    Color(0xFF304538),
-                    Color(0xFF1E3028),
+                    Color(0xFF8F5A2E),
+                    Color(0xFFD3A46B),
+                    Color(0xFFC18D53),
+                    Color(0xFF8C572D),
                   ],
                   stops: [0, .22, .68, 1],
                 ),
@@ -140,7 +144,7 @@ class _InkLinkState extends State<_InkLink> {
         ? Duration.zero
         : const Duration(milliseconds: 200);
     final color = active
-        ? (widget.spine ? const Color(0xFFFFE5A0) : const Color(0xFF94671B))
+        ? (widget.spine ? const Color(0xFF342512) : const Color(0xFF94671B))
         : widget.ink;
     return Semantics(
       button: true,
@@ -236,15 +240,21 @@ class _InkUnderline extends CustomPainter {
 class _SpineTooling extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
+    final grain = Paint()
+      ..color = const Color(0xFF69411F).withValues(alpha: .12);
+    for (var i = 0; i < size.width.toInt(); i += 7) {
+      final y = 14.0 + ((i * 17) % 47);
+      canvas.drawCircle(Offset(i.toDouble(), y), .7, grain);
+    }
     final gilt = Paint()
-      ..color = const Color(0xFFB8A16B).withValues(alpha: .65)
+      ..color = const Color(0xFF6D4529).withValues(alpha: .6)
       ..strokeWidth = .8
       ..style = PaintingStyle.stroke;
     // Paired rules and raised binding bands suggest the spine, not a card.
-    for (final y in [7.0, 10.0, size.height - 10, size.height - 7]) {
+    for (final y in [7.0, size.height - 7]) {
       canvas.drawLine(Offset(15, y), Offset(size.width - 15, y), gilt);
     }
-    for (final x in [12.0, 18.0, size.width - 18, size.width - 12]) {
+    for (final x in [12.0, 24.0, size.width - 24, size.width - 12]) {
       canvas.drawLine(
         Offset(x, 4),
         Offset(x, size.height - 4),

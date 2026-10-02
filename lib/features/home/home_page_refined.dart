@@ -98,13 +98,15 @@ class RefinedHomeHero extends StatelessWidget {
     super.key,
     required this.onExplore,
     required this.onAsk,
+    this.withBackdrop = true,
   });
   final VoidCallback onExplore;
   final VoidCallback onAsk;
+  final bool withBackdrop;
 
   @override
-  Widget build(BuildContext context) => HomeHeroBackdrop(
-    child: MaxWidth(
+  Widget build(BuildContext context) {
+    final content = MaxWidth(
       child: LayoutBuilder(
         builder: (context, c) {
           final narrow = c.maxWidth < 950;
@@ -310,8 +312,21 @@ class RefinedHomeHero extends StatelessWidget {
           );
         },
       ),
-    ),
-  );
+    );
+    final fadingContent = ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (bounds) => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Colors.white, Colors.white, Colors.transparent],
+        stops: [0, .89, 1],
+      ).createShader(bounds),
+      child: ClipRect(child: content),
+    );
+    return withBackdrop
+        ? HomeHeroBackdrop(child: fadingContent)
+        : fadingContent;
+  }
 }
 
 /// A restrained comic panel: ink outline, yellow print offset and a spoken tail.
